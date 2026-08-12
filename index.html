@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#0a0718" />
 <link rel="icon" href="data:," />
-<title>杨玲懿 · 星愿</title>
+<title>生日快乐</title>
 <style>
   * { box-sizing: border-box; }
   html, body {
@@ -55,7 +55,7 @@
     opacity: 0; transition: opacity 0.9s ease; user-select: none;
   }
   #rotatePrompt {
-    position: fixed; inset: 0; z-index: 6; display: none;
+    position: fixed; inset: 0; z-index: 7; display: none;
     flex-direction: column; align-items: center; justify-content: center;
     background: rgba(4, 3, 12, 0.97);
     color: #e9edff; text-align: center;
@@ -76,6 +76,50 @@
   }
   .rp-title { font-size: 21px; letter-spacing: 0.3em; text-indent: 0.3em; text-shadow: 0 0 18px rgba(150,175,255,0.6); }
   .rp-sub { margin-top: 14px; font-size: 13px; letter-spacing: 0.16em; color: #9aa8e8; }
+  #musicBtn {
+    position: fixed; right: 14px; bottom: 14px; z-index: 5;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid rgba(180, 195, 255, 0.35);
+    background: rgba(16, 18, 46, 0.45);
+    color: rgba(220, 228, 255, 0.85);
+    font-size: 16px; line-height: 1; cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.55; transition: opacity 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #musicBtn:hover { opacity: 1; }
+  #musicBtn.off { opacity: 0.3; }
+  #startOverlay {
+    position: fixed; inset: 0; z-index: 6; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: radial-gradient(ellipse at 50% 42%, rgba(16, 18, 58, 0.92) 0%, rgba(5, 4, 16, 0.97) 62%, #03020a 100%);
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+  }
+  .so-star {
+    position: absolute; border-radius: 50%; background: #fff; opacity: 0;
+    box-shadow: 0 0 6px 1px rgba(180, 200, 255, 0.8);
+    animation: soTwinkle 3s ease-in-out infinite;
+  }
+  .so-star.big { box-shadow: 0 0 12px 3px rgba(190, 205, 255, 0.9); }
+  @keyframes soTwinkle {
+    0%, 100% { opacity: 0.12; transform: scale(0.75); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+  .so-title {
+    font-size: clamp(20px, 4.6vw, 34px); letter-spacing: 0.3em; text-indent: 0.3em;
+    color: #f0f3ff; text-align: center; padding: 0 8vw; position: relative;
+    text-shadow: 0 0 20px rgba(160, 185, 255, 0.8), 0 0 60px rgba(130, 160, 255, 0.4);
+    animation: soPulse 2.4s ease-in-out infinite;
+  }
+  .so-sub {
+    margin-top: 18px; font-size: 13px; letter-spacing: 0.22em; text-indent: 0.22em;
+    color: rgba(205, 215, 250, 0.75); position: relative;
+  }
+  @keyframes soPulse {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.04); }
+  }
 </style>
 </head>
 <body>
@@ -93,6 +137,10 @@
   <div class="rp-title">请横屏观看</div>
   <div class="rp-sub">旋转手机后，动画自动开始</div>
 </div>
+<div id="startOverlay">
+  <div class="so-title">点击屏幕任意位置开始</div>
+</div>
+<button id="musicBtn" type="button" aria-label="音乐开关" title="音乐开关">♪</button>
 <div id="edgeWords"></div>
 <noscript><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;z-index:5">请启用 JavaScript 后再打开本页面。</div></noscript>
 
@@ -150,7 +198,7 @@
     var edgeWords = document.getElementById('edgeWords');
     var isMobile = /Android|iPhone|iPad|iPod|Mobile|HarmonyOS|ArkWeb/i.test(navigator.userAgent) ||
       (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
-    var N = isMobile ? 4000 : 7600;
+    var N = 9000; // 手机与电脑粒子数量一致，并整体加量
     var dprCap = isMobile ? 1.5 : 2;
     var METEOR_N = isMobile ? 10 : 16;
 
@@ -164,6 +212,352 @@
       rotatePrompt.style.display = show ? 'flex' : 'none';
     }
     updateRotatePrompt();
+
+    // ---------- 点击开始：星空引导页 ----------
+    var startOverlay = document.getElementById('startOverlay');
+    var animStarted = false;
+    (function buildStartStars() {
+      if (!startOverlay) return;
+      var frag = document.createDocumentFragment();
+      for (var s = 0; s < 80; s++) {
+        var el = document.createElement('div');
+        el.className = 'so-star' + (s % 9 === 0 ? ' big' : '');
+        var size = (s % 9 === 0 ? 3 : 1) + Math.random() * 2;
+        el.style.width = size + 'px';
+        el.style.height = size + 'px';
+        el.style.left = (Math.random() * 100) + '%';
+        el.style.top = (Math.random() * 100) + '%';
+        el.style.animationDuration = (1.8 + Math.random() * 3) + 's';
+        el.style.animationDelay = (Math.random() * 3) + 's';
+        frag.appendChild(el);
+      }
+      startOverlay.appendChild(frag);
+    })();
+    function updateStartScreen() {
+      if (!startOverlay) return;
+      var show = !rotateShown && !animStarted;
+      startOverlay.style.display = show ? 'flex' : 'none';
+    }
+    function startShow() {
+      if (animStarted) return;
+      animStarted = true;
+      if (startOverlay) startOverlay.style.display = 'none';
+      startTime = performance.now(); // 点击时刻作为动画与音乐起点
+      unlockAudio();
+      if (musicBtn) musicBtn.style.display = 'flex';
+    }
+    if (startOverlay) {
+      startOverlay.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        startShow();
+      });
+    }
+    window.addEventListener('keydown', function (e) {
+      if (!animStarted && (e.key === ' ' || e.key === 'Enter')) startShow();
+    });
+    updateStartScreen();
+
+    // ---------- 《有点甜》钢琴版：按用户谱面解析 + Web Audio 合成 ----------
+    var musicBtn = document.getElementById('musicBtn');
+    var audioCtx = null, musicMaster = null, musicTimer = null;
+    var musicNextTime = 0, musicOn = true, musicLoopBeat = 0, sPtr = 0;
+    var SONG_TEMPO = 95; // 1=F，4/4，♩=95
+    var NOTE_BASE = { '1': 65, '2': 67, '3': 69, '4': 70, '5': 72, '6': 74, '7': 76 };
+    // 谱面：音符(时值)；' 高八度，_ 低八度，# 升半音，0 休止，-(d) 延音，[a,b](d) 和弦；连写音符(如 35)平分时值
+    // ---- 右手旋律（唯一乐句，按小节号排列） ----
+    var m1 = '5(1), 1\'(0.5), 7(0.5), 1\'(0.5), 2\'(0.5), 2\'(1), 5(1), 1\'(1), -(1)';
+    var m2 = '1\'(1), 1\'(1), 1\'(0.5), 7(0.5), 5(0.5), 2(0.5), 3(1), 4(1), 5(0.5), 5(0.5), 1\'(0.25), 2\'(0.25), 1\'(0.25), 2\'(0.25)';
+    var m5 = '1\'(0.5), 1\'(0.5), 6(0.5), 5(0.5), 5(0.5), 4(0.5), #5(0.5), #3(0.5), 5(0.5), 3(0.5), 2(0.5), 1(0.5), 1(1)';
+    var m6 = '6(0.5), 7(0.5), 1\'(0.5), 5(0.5), 4(0.5), 3(0.5), 3(0.5), 1(0.5), 2(1), 2(2), -(1), 1(0.5), 2(0.5)';
+    var m9 = '3(0.5), 5(0.5), 5(0.5), 5(0.5), 3(0.5), 5(0.5), 3(0.5), 5(0.5), 6(0.5), 5(0.5), 3(0.5), 5(0.5), 5(1)';
+    var m10 = '35(0.5), 6(0.5), 6(0.5), 6(0.5), 6(0.5), 6(0.5), 5(0.5), 5(0.5), 5(1), -(1), 3(1), 7(0.5), 1\'(0.5)';
+    var m13 = '1\'(0.5), 1\'(0.5), 1\'(0.5), 3(0.5), 3(0.5), 3(0.5), 1\'(0.5), 7(0.5), 7(0.5), 1\'(0.5), 7(0.5), 5(0.5), 5(1)';
+    var m14 = '35(0.5), 6(0.5), 6(0.5), 6(0.5), 6(0.5), 6(0.5), 5(0.5), 5(0.5), 5(1), -(2), 1(0.5), 2(0.5)';
+    var m21 = '1\'(0.5), 7(0.5), 1\'(0.5), 3(0.5), 3(0.5), 3(0.5), 1\'(0.5), 7(0.5), 7(0.5), 1\'(0.5), 7(0.5), 6(0.5), 5(0.5), 5(1)';
+    var m22 = '35(0.5), 6(0.5), 1\'(0.5), 6(0.5), 1\'(0.5), 2\'(0.5), 1\'(0.5), 2\'(0.5), 2(2), -(1), 1\'(0.5), 2\'(0.5)';
+    var m25 = '3(0.5), 3(0.5), 3(0.5), 3(0.5), 3(0.5), 5(0.5), 5(0.5), 3(0.5), 2(0.5), 2(0.5), 2(0.5), 5(0.5), 5(0.5), 7(0.5), 7(0.5)';
+    var m26 = '1\'(0.5), 1\'(0.5), 1\'(0.5), 1\'(0.5), 1\'(0.5), 3(0.5), 3(0.5), 1(0.5), 7(0.5), 7(0.5), 7(0.5), 3(0.5), 3(0.5), 6(0.5), 5(0.5)';
+    var m29 = '6(0.5), 6(0.5), 6(0.5), 1\'(0.5), 7(0.5), 6(0.5), 5(0.5), 5(0.5), 5(0.5), 2(0.5), 3(0.5), 1\'(1.5), 23(0.5), 4(0.5), 3(0.5), 1(0.5), 6(0.5), 1\'(0.5), 2(0.5), 1\'(0.5), 2(0.5)';
+    var m30 = '2(2), -(1), 1\'(0.5), 2\'(0.5)';
+    var m37 = '6(0.5), 6(0.5), 6(0.5), 1\'(0.5), 7(0.5), 6(0.5), 5(0.5), 5(0.5), 5(0.5), 2(0.5), 3(0.5), 1\'(1.5), 23(0.5), 4(0.5), 3(0.5), 1(0.5), 6(0.5), 1\'(0.5), 1\'(0.5), 7(0.5), 1\'(0.5)';
+    var m38 = '1\'(3), -(1)';
+    var m41 = '3(1.5), 3(0.5), 2(0.5), 2(1), -(1), 2(1.5), 2(0.5), 2(0.5), 1(0.5), 1(1), -(1), 3(1.5), 3(0.5), 3(0.5), 2(0.5), 2(0.5), 5(0.5), 3(1.5), 3(1)';
+    var m42 = '-(3)';
+    var m45 = '3(1.5), 3(0.5), 2(0.5), 2(1), -(1), 2(1.5), 2(0.5), 2(0.5), 1(0.5), 1(1), -(1), 1\'(0.5), 1\'(0.5), 1\'(0.5), 1\'(0.5), 1(0.5), 2(0.5), 2(1), 2(2), -(1), 1(0.5), 2(0.5)';
+    var m70 = '1\'(3), -(1), 1\'(0.5), 2\'(0.5)';
+    var m86 = '1\'(3), -(1), 2(0.5), 3(0.5)';
+    var m89 = '4(0.5), 3(0.5), 1(0.5), 6(0.5), 7(0.5), 1\'(0.5), 1\'(0.5), 7(0.5), 1\'(1), -(3), 1\'(0.5), 5(0.5), 1\'(0.5), 5(0.5), 5(1), -(1)';
+    var m92 = '1\'(0.5), 5(0.5), 1\'(0.5), 5(0.5), 5(1), -(1), 1\'(0.5), 5(0.5), 1\'(0.5), 5(0.5), 5(1), 2(1), 16(1), -(3)';
+    var MELODY = [
+      [1, m1], [2, m2], [5, m5], [6, m6], [9, m9], [10, m10], [13, m13], [14, m14],
+      [17, m9], [18, m10], [21, m21], [22, m22], [25, m25], [26, m26], [29, m29], [30, m30],
+      [33, m25], [34, m26], [37, m37], [38, m38], [41, m41], [42, m42], [45, m45],
+      [49, m9], [50, m10], [53, m21], [54, m22], [57, m25], [58, m26], [61, m29], [62, m30],
+      [65, m25], [66, m26], [69, m37], [70, m70], [73, m25], [74, m26], [77, m29], [78, m30],
+      [81, m25], [82, m26], [85, m37], [86, m86], [89, m89], [92, m92]
+    ];
+    // ---- 左手伴奏（唯一乐句，按小节号对齐右手） ----
+    var b1 = '1_(0.5), 5_(0.5), 3_(1), 7_(0.5), 5_(0.5), 7_(0.5), 7_(0.5), 6_(0.5), 1_(0.5), 3_(0.5), 5_(0.5), 1_(0.5), 3_(0.5)';
+    var b2 = '4_(0.5), 1_(0.5), 3_(0.5), 5_(0.5), 7_(0.5), 0(0.5), 1(0.5), 0(0.5), 3_(0.5), 5_(0.5), 1_(0.5)';
+    var b5 = '4_(0.5), 1_(0.5), 5_(0.5), 6_(0.5), 1_(0.5), #5(0.5), 3_(0.5), 5_(0.5), 1_(0.5), 3_(0.5), 3(0.5), 1_(0.5), 5(0.5)';
+    var b6 = '2_(0.5), 6_(0.5), 2(0.5), 4(0.5), 4(0.5), 2(0.5), 4(0.5), 5_(0.5), 2(0.5), 4(0.5), 5(0.5), 7(0.5), 0(0.5)';
+    var b9 = '1_(0.5), 5_(0.5), 1_(0.5), 3_(0.5), 3_(0.5), 5_(0.5), 1_(0.5), 3_(0.5), 7_(0.5), 2_(0.5), 5_(0.5), 7_(0.5), 2_(0.5), 5_(0.5), 7_(0.5)';
+    var b10 = '4_(0.5), 1_(0.5), 4_(0.5), 6_(0.5), 5_(0.5), 2(0.5), 5_(0.5), 7(0.5), 1_(0.5), 5_(0.5), 1_(0.5), 2(0.5), 3(0.5), 5(0.5)';
+    var b13 = '6_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 7_(0.5), 3_(0.5), 7_(0.5), 3_(0.5), 7_(0.5), 3_(0.5)';
+    var b14 = '4_(0.5), 1_(0.5), 4_(0.5), 1_(0.5), 6_(0.5), 1_(0.5), 4_(0.5), 1_(0.5), 5_(0.5), 2(0.5), 4(0.5), 5(0.5), 7(0.5), 0(0.5)';
+    var b25 = '1_(0.5), 5_(0.5), 1_(0.5), 5_(0.5), 3_(0.5), 5_(0.5), 1_(0.5), 5_(0.5), 7_(0.5), 5_(0.5), 7_(0.5), 5_(0.5), 2_(0.5), 5_(0.5), 7_(0.5)';
+    var b26 = '6_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 1_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 5_(0.5), 3_(0.5), 5_(0.5), 3_(0.5), 7_(0.5), 3_(0.5), 5_(0.5), 3_(0.5)';
+    var b29 = '4_(0.5), 1_(0.5), 4_(0.5), 6_(0.5), 5_(0.5), 2_(0.5), 7(0.5), 3_(0.5), 7_(0.5), 3_(0.5), 5_(0.5), 6_(0.5), 3_(0.5), 1(0.5), 2_(0.5), 6_(0.5), 2_(0.5), 6_(0.5), 4_(0.5), 6_(0.5), 2_(0.5), 6_(0.5)';
+    var b30 = '5_(0.5), 2(0.5), 5(0.5), 7(0.5), 2(0.5), 5(0.5)';
+    var b37 = '4_(0.5), 1_(0.5), 4_(0.5), 6_(0.5), 5_(0.5), 2_(0.5), 7(0.5), 3_(0.5), 7_(0.5), 3_(0.5), 5_(0.5), 6_(0.5), 3_(0.5), 1(0.5), 2_(0.5), 6_(0.5), 2(0.5), 7(1), -(1), 1_(0.5), 5_(0.5), 1_(0.5), 2(0.5), 3(0.5), 0(0.5)';
+    var b41 = '4_(0.5), 4_(0.5), 4_(0.5), 4_(0.5), 5_(0.5), 2(0.5), 5(0.5), 7(0.5), 3_(0.5), 3_(0.5), 3_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 6_(0.5), 1_(0.5), 4_(0.5), 4_(0.5), 4_(0.5), 4_(0.5), 5_(0.5), 2(0.5), 5(0.5), 7(0.5), 1_(0.5), 5_(0.5), 1_(0.5), 5_(0.5), 3_(0.5), 5_(0.5), 1_(0.5), 5_(0.5)';
+    var b45 = '4_(0.5), 4_(0.5), 4_(0.5), 4_(0.5), 5_(0.5), 2(0.5), 5(0.5), 7(0.5), 3_(0.5), 3_(0.5), 3_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 6_(0.5), 1_(0.5), 4_(0.5), 4_(0.5), 4_(0.5), 4_(0.5), 5_(0.5), 2(0.5), 5(0.5), 5_(0.5), 2(0.5), 4(0.5), 5(0.5), 7(0.5), 0(0.5)';
+    var b89 = '4_(0.5), 1_(0.5), 6(0.5), 5_(0.5), 2(0.5), 7(0.5), 1_(0.5), 5_(0.5), 7_(0.5), 1(0.5), 3(0.5), 0(0.5), 1_(0.5), 5_(0.5), 5_(0.5), 1_(0.5), 5_(0.5), 5_(0.5)';
+    var b92 = '7_(0.5), 5(0.5), 5_(0.5), 7_(0.5), 5(0.5), 5_(0.5), 6_(0.5), 3_(0.5), 3_(0.5), 6_(0.5), 3_(0.5), 6_(0.5), 1_(0.5), 16(1), -(3)';
+    var BASS = [
+      [1, b1], [2, b2], [5, b5], [6, b6], [9, b9], [10, b10], [13, b13], [14, b14],
+      [17, b9], [18, b10], [21, b13], [22, b14], [25, b25], [26, b26], [29, b29], [30, b30],
+      [33, b25], [34, b26], [37, b37], [41, b41], [45, b45],
+      [49, b9], [50, b10], [53, b13], [54, b14], [57, b25], [58, b26], [61, b29], [62, b30],
+      [65, b25], [66, b26], [69, b37], [73, b25], [74, b26], [77, b29], [78, b30],
+      [81, b25], [82, b26], [85, b37], [89, b89], [92, b92]
+    ];
+    function midisOf(name) {
+      var out = [], i = 0;
+      while (i < name.length) {
+        var sharp = false;
+        if (name.charAt(i) === '#') { sharp = true; i++; }
+        var dig = name.charAt(i); i++;
+        var oct = 0;
+        if (name.charAt(i) === "'") { oct = 1; i++; }
+        else if (name.charAt(i) === '_') { oct = -1; i++; }
+        var base = NOTE_BASE[dig];
+        out.push(base ? base + oct * 12 + (sharp ? 1 : 0) : 0);
+      }
+      return out;
+    }
+    function splitTok(line) {
+      var toks = [], cur = '', depth = 0;
+      for (var ti = 0; ti < line.length; ti++) {
+        var ch = line.charAt(ti);
+        if (ch === '[') depth++;
+        else if (ch === ']') depth--;
+        if (ch === ',' && depth === 0) {
+          toks.push(cur);
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      if (cur.trim()) toks.push(cur);
+      return toks;
+    }
+    var lastEv = [null, null]; // 每只手最近一个音符（供 -(d) 延音跨小节使用）
+    function entryDur(line) {
+      var t = 0;
+      var toks = splitTok(line);
+      for (var k = 0; k < toks.length; k++) {
+        var tok = toks[k].trim();
+        if (!tok) continue;
+        var hm = tok.match(/^-\s*\(\s*([\d.]+)\s*\)$/);
+        if (hm) { t += parseFloat(hm[1]); continue; }
+        var mm = tok.match(/^(?:\[[^\]]+\]|[0-7#'_]+)\(\s*([\d.]+)\s*\)$/);
+        if (mm) t += parseFloat(mm[1]);
+      }
+      return t;
+    }
+    function parseBar(line, t0, hand) {
+      var evs = [], t = t0;
+      var toks = splitTok(line);
+      for (var k = 0; k < toks.length; k++) {
+        var tok = toks[k].trim();
+        if (!tok) continue;
+        var hm = tok.match(/^-\s*\(\s*([\d.]+)\s*\)$/);
+        if (hm) {
+          var hd = parseFloat(hm[1]);
+          if (lastEv[hand]) lastEv[hand].d += hd;
+          t += hd;
+          continue;
+        }
+        var cm = tok.match(/^\[([0-7#'_,\s]+)\]\(\s*([\d.]+)\s*\)$/);
+        if (cm) {
+          var d = parseFloat(cm[2]);
+          var mids = [];
+          var parts = cm[1].split(',');
+          for (var p2 = 0; p2 < parts.length; p2++) {
+            var nm = parts[p2].trim();
+            if (!nm) continue;
+            var nmids = midisOf(nm);
+            for (var nk = 0; nk < nmids.length; nk++) {
+              if (nmids[nk] > 0 && mids.indexOf(nmids[nk]) === -1) mids.push(nmids[nk]);
+            }
+          }
+          for (var cj = 0; cj < mids.length; cj++) {
+            var cev = { t: t, d: d, m: mids[cj], hand: hand };
+            evs.push(cev);
+            lastEv[hand] = cev;
+          }
+          t += d;
+          continue;
+        }
+        var sm = tok.match(/^([0-7#'_]+)\(\s*([\d.]+)\s*\)$/);
+        if (!sm) continue;
+        var d2 = parseFloat(sm[2]);
+        var mids2 = sm[1] === '0' ? [0] : midisOf(sm[1]);
+        var each = d2 / mids2.length;
+        for (var j = 0; j < mids2.length; j++) {
+          if (mids2[j] > 0) {
+            var ev = { t: t, d: each, m: mids2[j], hand: hand };
+            evs.push(ev);
+            lastEv[hand] = ev;
+          }
+          t += each;
+        }
+      }
+      return evs;
+    }
+    function buildSong() {
+      var evs = [];
+      var melStart = {};
+      var t = 0;
+      for (var i = 0; i < MELODY.length; i++) {
+        melStart[MELODY[i][0]] = t;
+        t += entryDur(MELODY[i][1]);
+      }
+      for (var i2 = 0; i2 < MELODY.length; i2++) {
+        evs = evs.concat(parseBar(MELODY[i2][1], melStart[MELODY[i2][0]], 0));
+      }
+      for (var b = 0; b < BASS.length; b++) {
+        var bt = melStart[BASS[b][0]];
+        if (bt === undefined) bt = 0;
+        evs = evs.concat(parseBar(BASS[b][1], bt, 1));
+      }
+      evs.sort(function (x, y) { return x.t - y.t; });
+      return evs;
+    }
+    var SONG = buildSong();
+    var SONG_LEN = 0;
+    for (var se = 0; se < SONG.length; se++) {
+      SONG_LEN = Math.max(SONG_LEN, SONG[se].t + SONG[se].d);
+    }
+    SONG_LEN = Math.ceil(SONG_LEN) + 1; // 完整版，末尾延音自然收尾后循环
+    function midiToFreq(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+    function voice(m, t0, dur, vel, bright) {
+      if (!audioCtx || !musicMaster) return;
+      var freq = midiToFreq(m);
+      var g = audioCtx.createGain();
+      var peak = 0.15 * vel;
+      var end = t0 + dur;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(peak, t0 + 0.005);
+      g.gain.setTargetAtTime(peak * 0.45, t0 + 0.005, 0.20);
+      g.gain.setTargetAtTime(0.0001, Math.max(t0 + 0.03, end - 0.08), 0.05);
+      var parts = bright
+        ? [
+            { type: 'sine', mult: 1, g: 1.0, det: 0 },
+            { type: 'triangle', mult: 2, g: 0.32, det: 3 },
+            { type: 'triangle', mult: 3, g: 0.12, det: 6 },
+            { type: 'sine', mult: 4, g: 0.06, det: 0 }
+          ]
+        : [
+            { type: 'sine', mult: 1, g: 1.0, det: 0 },
+            { type: 'triangle', mult: 2, g: 0.26, det: 0 },
+            { type: 'sine', mult: 3, g: 0.09, det: 0 }
+          ];
+      var stop = end + 0.3;
+      for (var p = 0; p < parts.length; p++) {
+        var o = audioCtx.createOscillator();
+        o.type = parts[p].type;
+        o.frequency.value = freq * parts[p].mult;
+        o.detune.value = parts[p].det;
+        var og = audioCtx.createGain();
+        og.gain.value = parts[p].g;
+        o.connect(og);
+        og.connect(g);
+        o.start(t0);
+        o.stop(stop);
+      }
+      g.connect(musicMaster);
+    }
+    function scheduleMusic() {
+      if (!audioCtx || audioCtx.state !== 'running') return;
+      var beatDur = 60 / SONG_TEMPO;
+      while (musicNextTime < audioCtx.currentTime + 0.3) {
+        var lb = musicLoopBeat % SONG_LEN;
+        while (sPtr < SONG.length && SONG[sPtr].t < lb + 1 - 1e-9) {
+          var ev = SONG[sPtr];
+          var off = Math.max(0, ev.t - lb) * beatDur;
+          var vel = ev.hand === 1 ? 0.45 + 0.06 * Math.random() : 0.9 + 0.1 * Math.random();
+          voice(ev.m, musicNextTime + off, ev.d * beatDur, vel, ev.hand !== 1);
+          sPtr++;
+        }
+        musicNextTime += beatDur;
+        musicLoopBeat++;
+        if (musicLoopBeat >= SONG_LEN) {
+          musicLoopBeat = 0;
+          sPtr = 0;
+        }
+      }
+    }
+    function initAudio() {
+      if (audioCtx) return;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+        musicMaster = audioCtx.createGain();
+        musicMaster.gain.value = 0.0001;
+        var comp = audioCtx.createDynamicsCompressor();
+        comp.threshold.value = -20;
+        comp.knee.value = 12;
+        comp.ratio.value = 8;
+        comp.attack.value = 0.004;
+        comp.release.value = 0.18;
+        musicMaster.connect(comp);
+        comp.connect(audioCtx.destination);
+        if (musicBtn) musicBtn.style.display = 'flex';
+      } catch (e) {
+        console.warn('音频不可用：', e && e.message);
+      }
+    }
+    function startMusic() {
+      if (!audioCtx) initAudio();
+      if (!audioCtx || audioCtx.state !== 'running' || !musicOn) return;
+      if (musicTimer) {
+        if (musicMaster) musicMaster.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.3);
+        return;
+      }
+      if (musicMaster) musicMaster.gain.setTargetAtTime(0.2, audioCtx.currentTime, 0.4);
+      musicNextTime = audioCtx.currentTime + 0.12;
+      musicLoopBeat = 0;
+      sPtr = 0;
+      musicTimer = setInterval(scheduleMusic, 80);
+    }
+    function unlockAudio() {
+      initAudio();
+      if (!audioCtx) return;
+      if (audioCtx.state !== 'running') audioCtx.resume();
+      startMusic();
+    }
+    function toggleMusic() {
+      initAudio();
+      if (!audioCtx) return;
+      musicOn = !musicOn;
+      if (musicBtn) {
+        musicBtn.classList.toggle('off', !musicOn);
+        musicBtn.textContent = musicOn ? '♪' : '♪';
+      }
+      if (musicOn) {
+        audioCtx.resume();
+        startMusic();
+      } else if (musicMaster) {
+        musicMaster.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.08);
+      }
+    }
+    if (musicBtn) {
+      musicBtn.addEventListener('click', function (e) { e.stopPropagation(); toggleMusic(); });
+      musicBtn.style.display = 'none'; // 音频可用后才显示
+    }
 
     var renderer;
     try {
@@ -716,18 +1110,23 @@
       if (!mctx) throw new Error('Canvas 2D 不可用');
       mctx.textAlign = 'center';
       mctx.textBaseline = 'middle';
-      mctx.font = '700 300px ' + font;
-      var titleFs = 300;
+      mctx.font = '700 380px ' + font;
+      var titleFs = 380;
       var titleChars = ['生', '日', '快', '乐'];
-      var gap2 = titleFs * 0.22;
-      var cw2 = titleChars.map(function (c) { return mctx.measureText(c).width; });
-      var tw2 = cw2[0] + cw2[1] + cw2[2] + cw2[3] + gap2 * 3;
+      function titleWidth(fs, gap) {
+        var cws = titleChars.map(function (c) { return mctx.measureText(c).width; });
+        var tw = 0;
+        for (var ti = 0; ti < cws.length; ti++) tw += cws[ti];
+        return { cws: cws, tw: tw + gap * (titleChars.length - 1) };
+      }
+      var t0 = titleWidth(titleFs, titleFs * 0.22);
+      var cw2 = t0.cws, tw2 = t0.tw, gap2 = titleFs * 0.22;
       if (tw2 > W * 0.94) {
         titleFs = Math.floor(titleFs * W * 0.94 / tw2);
         mctx.font = '700 ' + titleFs + 'px ' + font;
         gap2 = titleFs * 0.22;
-        cw2 = titleChars.map(function (c) { return mctx.measureText(c).width; });
-        tw2 = cw2[0] + cw2[1] + cw2[2] + cw2[3] + gap2 * 3;
+        t0 = titleWidth(titleFs, gap2);
+        cw2 = t0.cws; tw2 = t0.tw;
       }
       // 第二行原文 33 字，单行会被自动缩放压到很小；拆成两行排，文字内容不变
       var line1 = '那一天，天使的信件在银河里走慢了光年。';
@@ -747,7 +1146,7 @@
         ctx.font = '700 ' + titleFs + 'px ' + font;
         var x02 = (W - tw2) / 2;
         var cur2 = x02;
-        for (var ci2 = 0; ci2 < 4; ci2++) {
+        for (var ci2 = 0; ci2 < titleChars.length; ci2++) {
           ctx.fillText(titleChars[ci2], cur2 + cw2[ci2] / 2, H * 0.13);
           cur2 += cw2[ci2] + gap2;
         }
@@ -783,7 +1182,7 @@
           }
         }
         if (poemPts.length / 2 >= 300) {
-          var boost = Math.floor(N * 0.45);
+          var boost = Math.floor(N * 0.6);
           var g2 = 0.6180339887;
           for (var bk = 0; bk < boost; bk++) {
             var pidx = Math.floor(frac((bk + 0.37) * g2) * (poemPts.length / 2));
@@ -797,10 +1196,12 @@
       } catch (e) {
         console.warn('诗文粒子增密失败：', e && e.message);
       }
+      // 标题/诗文按布局边界区分：第一行诗文字形顶部不得被误判为标题
+      var poemBoundary = -(H * 0.45 - H / 2) * k + 0.05;
       // 尺寸与过渡错峰：标题区略大且先成形；诗文区单层平铺、更细更密、后成形
       for (var i = 0; i < N; i++) {
         var by = birthTarget[i * 3 + 1];
-        if (by > -0.05) {
+        if (by > poemBoundary) {
           sizeBirth[i] = sizeName[i] * 1.1;
           birthDelay[i] = 0;
         } else {
@@ -859,7 +1260,7 @@
         rememberTarget[qb + 2] = 0;
         sizeRemember[i] = sizeName[i] * 0.58;
         var rx = clamp((rememberTarget[qb] + rememberWidth / 2) / rememberWidth, 0, 1);
-        rememberDelay[i] = 0.15 + rx * 0.3;
+        rememberDelay[i] = 0.10 + rx * 0.18;
       }
     }
     sampleRemember();
@@ -1547,7 +1948,7 @@
         for (i = 0; i < N; i++) {
           b = i * 3;
           // 从左到右错峰流动：生日组合 → “我也记得”
-          pp = clamp((pe - (rememberDelay[i] + seed[i] * 0.1)) / 0.62, 0, 1);
+          pp = clamp((pe - (rememberDelay[i] + seed[i] * 0.1)) / 0.5, 0, 1);
           q = pp * pp * (3 - 2 * pp);
           pos[b] = mix(birthTarget[b], rememberTarget[b], q);
           pos[b + 1] = mix(birthTarget[b + 1], rememberTarget[b + 1], q);
@@ -1705,8 +2106,9 @@
       var dt = Math.min((now - lastT) / 1000, 0.1);
       lastT = now;
       updateRotatePrompt();
-      // 手机竖屏提示期间冻结时间轴，旋转为横屏后继续，不跳过章节进度
-      if (!rotateShown) {
+      updateStartScreen();
+      // 旋转提示或“点击开始”页期间冻结时间轴；点击开始后从零推进
+      if (!rotateShown && animStarted) {
         nowTime = (performance.now() - startTime) / 1000;
       }
       for (var twi = 0; twi < twinkleLayers.length; twi++) {
