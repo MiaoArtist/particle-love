@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0a0718" />
+<link rel="icon" href="data:," />
+<title>杨玲懿 · 星愿</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+    background: linear-gradient(180deg, #060a24 0%, #120a30 42%, #1c0b34 68%, #0a0718 100%);
+    color: #cfd6ff;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #scene { position: fixed; inset: 0; touch-action: none; }
+  #scene canvas { display: block; width: 100%; height: 100%; }
+  #loader {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    z-index: 2; pointer-events: none; color: #aab6ff; font-size: 14px; letter-spacing: 0.35em;
+    text-shadow: 0 0 14px rgba(120,150,255,0.85); opacity: 1; transition: opacity 1.2s ease;
+  }
+  #loader.hidden { opacity: 0; }
+  #fallback {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+    z-index: 3; padding: 24px;
+  }
+  #fallback .box {
+    max-width: 520px; padding: 30px 34px; border: 1px solid rgba(160,180,255,0.25);
+    border-radius: 16px; background: rgba(10,12,32,0.9); box-shadow: 0 0 50px rgba(90,120,255,0.18);
+    text-align: center;
+  }
+  #fallback h1 { margin: 0 0 12px; font-size: 18px; color: #e8ecff; font-weight: 600; }
+  #fallback p { margin: 0; font-size: 14px; line-height: 1.9; color: #a9b4e8; word-break: break-word; }
+  #introMask {
+    position: fixed; inset: 0; z-index: 4;
+    display: flex; align-items: center; justify-content: center;
+    background: #04030c;
+    pointer-events: none;
+  }
+  #introText {
+    color: #e9edff; font-size: clamp(20px, 4.5vw, 34px);
+    letter-spacing: 0.28em; text-indent: 0.28em;
+    text-align: center; padding: 0 8vw;
+    text-shadow: 0 0 18px rgba(150, 175, 255, 0.65), 0 0 46px rgba(120, 150, 255, 0.28);
+    opacity: 0; white-space: nowrap;
+  }
+  #edgeWords { position: fixed; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+  .edge-word {
+    position: absolute; color: rgba(215, 225, 255, 0.9);
+    font-family: Georgia, "Times New Roman", serif;
+    letter-spacing: 0.18em; text-shadow: 0 0 10px rgba(170, 190, 255, 0.7);
+    opacity: 0; transition: opacity 0.9s ease; user-select: none;
+  }
+  #rotatePrompt {
+    position: fixed; inset: 0; z-index: 6; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(4, 3, 12, 0.97);
+    color: #e9edff; text-align: center;
+  }
+  .rp-phone {
+    width: 58px; height: 96px; border: 2px solid rgba(185, 200, 255, 0.9);
+    border-radius: 14px; position: relative; margin-bottom: 34px;
+    animation: rpTurn 2s ease-in-out infinite;
+  }
+  .rp-phone::before {
+    content: ''; position: absolute; left: 50%; top: 7px;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(200, 210, 255, 0.95); transform: translateX(-50%);
+  }
+  @keyframes rpTurn {
+    0%, 100% { transform: rotate(0deg); box-shadow: 0 0 22px rgba(120,150,255,0.15); }
+    50% { transform: rotate(90deg); box-shadow: 0 0 34px rgba(150,180,255,0.4); }
+  }
+  .rp-title { font-size: 21px; letter-spacing: 0.3em; text-indent: 0.3em; text-shadow: 0 0 18px rgba(150,175,255,0.6); }
+  .rp-sub { margin-top: 14px; font-size: 13px; letter-spacing: 0.16em; color: #9aa8e8; }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="loader">✦ 星尘汇聚中…</div>
+<div id="fallback">
+  <div class="box">
+    <h1>✨ 动画暂时无法加载</h1>
+    <p id="fallbackMsg">请检查网络连接后刷新页面重试。</p>
+  </div>
+</div>
+<div id="introMask"><div id="introText"></div></div>
+<div id="rotatePrompt">
+  <div class="rp-phone"></div>
+  <div class="rp-title">请横屏观看</div>
+  <div class="rp-sub">旋转手机后，动画自动开始</div>
+</div>
+<div id="edgeWords"></div>
+<noscript><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;z-index:5">请启用 JavaScript 后再打开本页面。</div></noscript>
+
+<script>
+(function () {
+  'use strict';
+
+  var fallbackShown = false;
+  function showFallback(msg) {
+    if (fallbackShown) return;
+    fallbackShown = true;
+    var loader = document.getElementById('loader');
+    var msgEl = document.getElementById('fallbackMsg');
+    var fb = document.getElementById('fallback');
+    if (loader) loader.classList.add('hidden');
+    if (msgEl && msg) msgEl.textContent = msg;
+    if (fb) fb.style.display = 'flex';
+  }
+
+  window.addEventListener('error', function (e) {
+    showFallback('页面出现异常：' + (e.message || '未知错误') + '。请刷新重试。');
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason;
+    showFallback('资源加载异常：' + (r && r.message ? r.message : '网络错误') + '。请检查网络后刷新。');
+  });
+
+  // Three.js CDN 双源加载，主源失败自动切换备用源
+  var CDNS = [
+    'https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.module.js',
+    'https://unpkg.com/three@0.150.1/build/three.module.js'
+  ];
+  function loadThree(idx) {
+    return import(CDNS[idx]).then(function (m) { return m; }).catch(function () {
+      if (idx + 1 < CDNS.length) return loadThree(idx + 1);
+      throw new Error('Three.js 加载失败，请检查网络连接');
+    });
+  }
+
+  loadThree(0).then(function (THREE) {
+    try {
+      initApp(THREE);
+    } catch (err) {
+      console.error(err);
+      showFallback('动画初始化失败：' + (err && err.message ? err.message : '未知错误'));
+    }
+  }).catch(function (err) {
+    showFallback(err.message);
+  });
+
+  function initApp(THREE) {
+    var container = document.getElementById('scene');
+    var introMask = document.getElementById('introMask');
+    var introText = document.getElementById('introText');
+    var edgeWords = document.getElementById('edgeWords');
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile|HarmonyOS|ArkWeb/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 1 && window.innerWidth < 900);
+    var N = isMobile ? 4000 : 7600;
+    var dprCap = isMobile ? 1.5 : 2;
+    var METEOR_N = isMobile ? 10 : 16;
+
+    // 手机竖屏：全屏旋转提示，提示期间冻结动画时间轴
+    var rotatePrompt = document.getElementById('rotatePrompt');
+    var rotateShown = false;
+    function updateRotatePrompt() {
+      if (!rotatePrompt) return;
+      var show = isMobile && window.innerHeight > window.innerWidth;
+      rotateShown = show;
+      rotatePrompt.style.display = show ? 'flex' : 'none';
+    }
+    updateRotatePrompt();
+
+    var renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+    } catch (e) {
+      throw new Error('当前设备不支持 WebGL：' + e.message);
+    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
+
+    // ---------- 基础工具 ----------
+    function rand() { return Math.random(); }
+    function frac(x) { return x - Math.floor(x); }
+    function clamp(x, a, b) { return x < a ? a : (x > b ? b : x); }
+    function mix(a, b, t) { return a + (b - a) * t; }
+    function easeInOut(p) { return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+    function smoothstep01(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+
+    function makeGlowTexture() {
+      var c = document.createElement('canvas');
+      c.width = c.height = 64;
+      var g = c.getContext('2d');
+      var grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+      return new THREE.CanvasTexture(c);
+    }
+    var glowTex = makeGlowTexture();
+
+    // ---------- 背景星点（静止） ----------
+    function makeStars(count, zMin, zMax, size, opacity, color) {
+      var geo = new THREE.BufferGeometry();
+      var arr = new Float32Array(count * 3);
+      for (var i = 0; i < count; i++) {
+        arr[i * 3] = (rand() * 2 - 1) * 70;
+        arr[i * 3 + 1] = (rand() * 2 - 1) * 42;
+        arr[i * 3 + 2] = -mix(zMin, zMax, rand());
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      var mat = new THREE.PointsMaterial({
+        size: size, map: glowTex, transparent: true, opacity: opacity,
+        depthWrite: false, sizeAttenuation: false,
+        blending: THREE.AdditiveBlending, color: color
+      });
+      var pts = new THREE.Points(geo, mat);
+      pts.frustumCulled = false;
+      scene.add(pts);
+      return pts;
+    }
+    makeStars(isMobile ? 180 : 320, 70, 28, 1.1, 0.8, 0xbfc9ff);
+    makeStars(isMobile ? 70 : 130, 34, 16, 1.8, 0.55, 0xffd9f0);
+
+    // ---------- 背景闪烁星点（点缀夜空，缓慢明灭） ----------
+    var twinkleLayers = [];
+    function makeTwinkleStars(count, zMin, zMax, sizeMin, sizeMax) {
+      var geo = new THREE.BufferGeometry();
+      var arr = new Float32Array(count * 3);
+      var phases = new Float32Array(count);
+      var sizes = new Float32Array(count);
+      var cols = new Float32Array(count * 3);
+      var pals = [
+        [0.82, 0.90, 1.0],
+        [1.0, 0.96, 0.86],
+        [0.90, 0.84, 1.0],
+        [0.78, 0.95, 0.95]
+      ];
+      for (var i = 0; i < count; i++) {
+        arr[i * 3] = (rand() * 2 - 1) * 70;
+        arr[i * 3 + 1] = (rand() * 2 - 1) * 42;
+        arr[i * 3 + 2] = -mix(zMin, zMax, rand());
+        phases[i] = rand() * Math.PI * 2;
+        sizes[i] = mix(sizeMin, sizeMax, rand());
+        var pal = pals[Math.floor(rand() * pals.length)];
+        cols[i * 3] = pal[0];
+        cols[i * 3 + 1] = pal[1];
+        cols[i * 3 + 2] = pal[2];
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      geo.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+      geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+      geo.setAttribute('aColor', new THREE.BufferAttribute(cols, 3));
+      var mat = new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 } },
+        vertexShader: [
+          'attribute float aPhase;',
+          'attribute float aSize;',
+          'attribute vec3 aColor;',
+          'uniform float uTime;',
+          'varying vec3 vColor;',
+          'varying float vTw;',
+          'void main() {',
+          '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+          '  gl_PointSize = aSize * (320.0 / max(8.0, -mv.z));',
+          '  gl_Position = projectionMatrix * mv;',
+          '  vColor = aColor;',
+          '  float tw = 0.5 + 0.5 * sin(uTime * (0.8 + 0.7 * aPhase) + aPhase * 6.28318);',
+          '  vTw = tw * tw;',
+          '}'
+        ].join('\n'),
+        fragmentShader: [
+          'varying vec3 vColor;',
+          'varying float vTw;',
+          'void main() {',
+          '  float d = length(gl_PointCoord - 0.5) * 2.0;',
+          '  float glow = smoothstep(1.0, 0.15, d);',
+          '  gl_FragColor = vec4(vColor, glow * vTw * 0.85);',
+          '}'
+        ].join('\n'),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      var pts = new THREE.Points(geo, mat);
+      pts.frustumCulled = false;
+      scene.add(pts);
+      twinkleLayers.push(pts);
+      return pts;
+    }
+    makeTwinkleStars(isMobile ? 90 : 180, 70, 32, 0.12, 0.30);
+
+    // ---------- 几何地面（屏幕空间矢量山峦，爱心出现后消失） ----------
+    function makeGroundScreen() {
+      var geo = new THREE.PlaneGeometry(2, 2);
+      var mat = new THREE.ShaderMaterial({
+        vertexShader: [
+          'varying vec2 vUv;',
+          'void main() {',
+          '  vUv = uv;',
+          '  gl_Position = vec4(position.xy, 0.0, 1.0);',
+          '}'
+        ].join('\n'),
+        fragmentShader: [
+          'varying vec2 vUv;',
+          'uniform float uAlpha;',
+          'float ridge(float x, float a1, float f1, float a2, float f2, float a3, float f3) {',
+          '  return a1 * sin(x * 6.28318 * f1 + 1.3)',
+          '       + a2 * sin(x * 6.28318 * f2 + 3.7)',
+          '       + a3 * sin(x * 6.28318 * f3 + 0.4);',
+          '}',
+          'float rnd(vec2 c) {',
+          '  return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453);',
+          '}',
+          'float treeMask(float x, float t, float base, float h, float w, float cell, float seed) {',
+          '  float cx = floor(x * cell);',
+          '  float hsh = rnd(vec2(cx, seed));',
+          '  if (hsh < 0.5) return 0.0;',
+          '  float lx = fract(x * cell) - 0.5;',
+          '  float th = h * (0.65 + 0.75 * hsh);',
+          '  float up = clamp((base - t) / th, 0.0, 1.0);',
+          '  if (up <= 0.0) return 0.0;',
+          '  float hw = w * (0.55 + 0.9 * hsh) * (1.0 - up);',
+          '  return abs(lx) <= hw ? 1.0 : 0.0;',
+          '}',
+          'void main() {',
+          '  vec2 uv = vUv;',
+          '  float H = 0.42;',
+          '  if (uv.y > H) discard;',
+          '  float t = (H - uv.y) / H;',
+          '  float rFar  = 0.15 + ridge(uv.x, 0.032, 2.0, 0.020, 4.5, 0.011, 8.0);',
+          '  float rMid  = 0.30 + ridge(uv.x, 0.048, 1.6, 0.029, 3.9, 0.017, 6.6);',
+          '  float rNear = 0.46 + ridge(uv.x, 0.060, 1.3, 0.038, 3.4, 0.022, 5.8);',
+          '  float nTree = treeMask(uv.x, t, rNear, 0.13, 0.10, 13.0, 3.7);',
+          '  float mTree = treeMask(uv.x, t, rMid, 0.07, 0.06, 17.0, 8.1);',
+          '  if (nTree > 0.5) {',
+          '    gl_FragColor = vec4(vec3(0.030, 0.020, 0.065) * (1.0 - 0.12 * t), 0.96 * uAlpha);',
+          '    return;',
+          '  }',
+          '  if (mTree > 0.5) {',
+          '    gl_FragColor = vec4(vec3(0.055, 0.040, 0.12) * (1.0 - 0.12 * t), 0.96 * uAlpha);',
+          '    return;',
+          '  }',
+          '  if (t < rFar) discard;',
+          '  vec3 farCol = vec3(0.12, 0.10, 0.24);',
+          '  vec3 midCol = vec3(0.070, 0.055, 0.15);',
+          '  vec3 nearCol = vec3(0.035, 0.024, 0.075);',
+          '  vec3 col = t < rMid ? farCol : (t < rNear ? midCol : nearCol);',
+          '  float shade = t < rMid ? 1.0 - 0.32 * smoothstep(rFar, rMid, t)',
+          '               : (t < rNear ? 1.0 - 0.28 * smoothstep(rMid, rNear, t)',
+          '               : 1.0 - 0.18 * smoothstep(rNear, 1.0, t));',
+          '  col *= shade;',
+          '  float rimFar = (1.0 - smoothstep(0.0, 0.015, abs(t - rFar))) * 0.30;',
+          '  float rimMid = (1.0 - smoothstep(0.0, 0.015, abs(t - rMid))) * 0.30;',
+          '  float rimNear = (1.0 - smoothstep(0.0, 0.015, abs(t - rNear))) * 0.32;',
+          '  col += vec3(0.20, 0.19, 0.34) * (rimFar + rimMid + rimNear);',
+          '  gl_FragColor = vec4(col, (0.94 + 0.06 * t) * uAlpha);',
+          '}'
+        ].join('\n'),
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        blending: THREE.NormalBlending,
+        uniforms: { uAlpha: { value: 1 } }
+      });
+      var mesh = new THREE.Mesh(geo, mat);
+      mesh.renderOrder = 999;
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+      return mesh;
+    }
+    var groundScreen = makeGroundScreen();
+
+    // ---------- 相机控制（自定义轨道，带阻尼惯性） ----------
+    var aspect = window.innerWidth / window.innerHeight;
+    var camS = { theta: 0, phi: 0.95, r: aspect < 0.8 ? 7.2 : 8.4 };
+    var camTarget = new THREE.Vector3(0, 0.12, 0);
+    var velT = 0, velP = 0;
+    var dragging = false;
+    var controlsLocked = false;
+    var pinchPrev = 0;
+    var pointers = new Map();
+    var canvas = renderer.domElement;
+
+    canvas.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (controlsLocked) return;
+      canvas.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 1) {
+        dragging = true;
+      } else if (pointers.size === 2) {
+        dragging = false;
+        var ps = Array.from(pointers.values());
+        pinchPrev = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y);
+      }
+    });
+
+    canvas.addEventListener('pointermove', function (e) {
+      if (!pointers.has(e.pointerId)) return;
+      var prev = pointers.get(e.pointerId);
+      var dx = e.clientX - prev.x, dy = e.clientY - prev.y;
+      prev.x = e.clientX; prev.y = e.clientY;
+      if (pointers.size === 1 && dragging) {
+        velT = -dx * 0.0052;
+        velP = -dy * 0.0042;
+        camS.theta += velT;
+        camS.phi = clamp(camS.phi + velP, 0.35, 1.6);
+      } else if (pointers.size === 2) {
+        var ps = Array.from(pointers.values());
+        var d = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y);
+        if (pinchPrev > 0) camS.r = clamp(camS.r * pinchPrev / d, 3.6, 17);
+        pinchPrev = d;
+      }
+    });
+
+    canvas.addEventListener('pointerup', function (e) {
+      if (pointers.has(e.pointerId)) {
+        var wasOne = pointers.size === 1;
+        pointers.delete(e.pointerId);
+        if (wasOne && pointers.size === 0) {
+          dragging = false;
+        }
+        if (pointers.size === 2) {
+          var ps = Array.from(pointers.values());
+          pinchPrev = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y);
+        }
+      }
+    });
+    canvas.addEventListener('pointercancel', function (e) {
+      pointers.delete(e.pointerId);
+      dragging = pointers.size > 0;
+    });
+    canvas.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      if (controlsLocked) return;
+      camS.r = clamp(camS.r * Math.exp(e.deltaY * 0.0011), 3.6, 17);
+    }, { passive: false });
+    canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    function updateCamera(dt) {
+      if (controlsLocked) {
+        velT = 0;
+        velP = 0;
+      }
+      if (!dragging && pointers.size === 0) {
+        camS.theta += velT;
+        camS.phi = clamp(camS.phi + velP, 0.35, 1.6);
+        var damp = Math.exp(-3.4 * dt);
+        velT *= damp;
+        velP *= damp;
+      }
+      var sp = Math.sin(camS.phi), cp = Math.cos(camS.phi);
+      camera.position.set(
+        camTarget.x + camS.r * sp * Math.sin(camS.theta),
+        camTarget.y + camS.r * cp,
+        camTarget.z + camS.r * sp * Math.cos(camS.theta)
+      );
+      camera.lookAt(camTarget);
+    }
+
+    // ---------- 主粒子系统（实例化四边形 + 自定义软发光着色器） ----------
+    var heartGroup = new THREE.Group();
+    scene.add(heartGroup);
+
+    var pos = new Float32Array(N * 3);
+    var vel = new Float32Array(N * 3);
+    var colors = new Float32Array(N * 3);
+    var sizes = new Float32Array(N);
+    var alphas = new Float32Array(N);
+    var starArr = new Float32Array(N); // 流星闪灭时的四角星芒强度（0~1）
+
+    var seed = new Float32Array(N);
+    var meteorSpawn = new Float32Array(N * 3);
+    var meteorVel = new Float32Array(N * 3);
+    var meteorLife = new Float32Array(N);
+    var meteorDelay = new Float32Array(N);
+    var meteorTrailT = new Float32Array(N);
+    var sizeBase = new Float32Array(N);
+    var sizeSmall = new Float32Array(N);
+    var colorA = new Float32Array(N * 3);
+    var colorB = new Float32Array(N * 3);
+    var colorC = new Float32Array(N * 3);
+    var heartTarget = new Float32Array(N * 3);
+    var nameTarget = new Float32Array(N * 3);
+    var birthTarget = new Float32Array(N * 3);
+    var sizeBirth = new Float32Array(N);
+    var birthDelay = new Float32Array(N);
+    var heartDir = new Float32Array(N * 3);
+    var heartRadial = new Float32Array(N);
+    var heartCX = 0, heartCY = 0, heartCZ = 0;
+
+    for (var i = 0; i < N; i++) {
+      var s = seed[i] = rand();
+      var b = i * 3;
+      var big = false;
+      if (i < METEOR_N) {
+        // 远景流星：零星几颗，近大远小，大流星更近更快
+        big = rand() < 0.3;
+        meteorSpawn[b] = mix(-17, -2, rand());
+        meteorSpawn[b + 1] = mix(0, 5, rand());
+        meteorSpawn[b + 2] = big ? mix(-15, -8, rand()) : mix(-34, -16, rand());
+        // 角度收敛：轨迹与屏幕左边缘约 55°（相对水平约 35°），从天边划过
+        var angDeg = mix(36, 38, rand());
+        var angR = angDeg * Math.PI / 180;
+        var dx = Math.cos(angR), dy = -Math.sin(angR), dz = (rand() * 2 - 1) * 0.05;
+        var len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        var spd = big ? mix(16, 30, rand()) : mix(6, 13, rand());
+        meteorVel[b] = dx / len * spd;
+        meteorVel[b + 1] = dy / len * spd;
+        meteorVel[b + 2] = dz / len * spd;
+        meteorLife[i] = mix(1.5, 3.4, rand());
+        // 均匀错峰出场，避免几颗流星挤在同一时刻出现
+        meteorDelay[i] = (i / METEOR_N) * 5.2 + rand() * 0.6;
+        meteorTrailT[i] = Math.min(meteorLife[i] * mix(0.55, 0.8, rand()), 2.2);
+      } else {
+        // 其余粒子暂存于画面上方，过渡时再汇聚成爱心
+        meteorSpawn[b] = (rand() * 2 - 1) * 20;
+        meteorSpawn[b + 1] = mix(16, 24, rand());
+        meteorSpawn[b + 2] = mix(-26, -6, rand());
+        meteorVel[b] = meteorVel[b + 1] = meteorVel[b + 2] = 0;
+        meteorLife[i] = 1;
+        meteorDelay[i] = 0;
+        meteorTrailT[i] = 0;
+      }
+      // 近大远小 + 大流星/小流星分布
+      var depthFactor = 0.62 + (meteorSpawn[b + 2] + 34) / 26 * 0.62;
+      sizeBase[i] = (big ? mix(0.3, 0.5, rand()) : mix(0.12, 0.24, rand())) * depthFactor;
+      sizeSmall[i] = mix(0.05, 0.09, rand());
+      var t1 = rand(), t2 = rand(), t3 = rand();
+      // 流星色板：蓝白 / 暖白 / 淡紫 / 青白
+      var pal = Math.floor(rand() * 4);
+      var pr = pal === 0 ? [0.78, 0.88, 1.0] :
+               pal === 1 ? [1.0, 0.94, 0.84] :
+               pal === 2 ? [0.86, 0.8, 1.0] : [0.72, 0.96, 0.95];
+      colorA[b] = clamp(pr[0] + (rand() * 2 - 1) * 0.06, 0, 1);
+      colorA[b + 1] = clamp(pr[1] + (rand() * 2 - 1) * 0.06, 0, 1);
+      colorA[b + 2] = clamp(pr[2] + (rand() * 2 - 1) * 0.06, 0, 1);
+      // colorB（粉→玫）在 sampleHeart 中按位置渐变填充
+      colorC[b] = 1.0;
+      colorC[b + 1] = mix(0.86, 0.68, t2);
+      colorC[b + 2] = mix(0.5, 0.28, t3);
+      pos[b] = meteorSpawn[b];
+      pos[b + 1] = meteorSpawn[b + 1];
+      pos[b + 2] = meteorSpawn[b + 2];
+    }
+
+    var sizeName = new Float32Array(N);
+    for (var ni = 0; ni < N; ni++) sizeName[ni] = sizeSmall[ni] * 1.2;
+
+    // 3D 爱心：参数化心形曲线 + 向心填充 + 厚度
+    function sampleHeart() {
+      var scale = 0.092;
+      var yMin = 1e9, yMax = -1e9, rMax = 0;
+      var sx = 0, sy = 0, sz = 0;
+      for (var j = 0; j < N; j++) {
+        var t = rand() * Math.PI * 2;
+        var sinT = Math.sin(t);
+        var bx = 16 * sinT * sinT * sinT;
+        var by = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+        // 均匀体积填充（少量表面层保证轮廓清晰）
+        var f = rand() < 0.35 ? 0.86 + 0.14 * rand() : Math.pow(rand(), 1 / 3);
+        var x = bx * f, y = by * f;
+        var thick = 8 * (0.3 + 0.7 * (1 - f)) * (0.55 + 0.45 * (1 - Math.abs(x) / 16));
+        var z = (rand() * 2 - 1) * thick;
+        var q = j * 3;
+        heartTarget[q] = x * scale;
+        heartTarget[q + 1] = y * scale + 0.08;
+        heartTarget[q + 2] = z * scale;
+        sx += heartTarget[q];
+        sy += heartTarget[q + 1];
+        sz += heartTarget[q + 2];
+        if (heartTarget[q + 1] < yMin) yMin = heartTarget[q + 1];
+        if (heartTarget[q + 1] > yMax) yMax = heartTarget[q + 1];
+        var rr = Math.sqrt(x * x + z * z);
+        if (rr > rMax) rMax = rr;
+      }
+      heartCX = sx / N;
+      heartCY = sy / N;
+      heartCZ = sz / N;
+      // 每粒子相对心形中心的方向与径向距离（用于内部呼吸震动）
+      var maxRad = 0;
+      for (var jd = 0; jd < N; jd++) {
+        var bd = jd * 3;
+        var dxh = heartTarget[bd] - heartCX;
+        var dyh = heartTarget[bd + 1] - heartCY;
+        var dzh = heartTarget[bd + 2] - heartCZ;
+        var dl = Math.sqrt(dxh * dxh + dyh * dyh + dzh * dzh);
+        if (dl > maxRad) maxRad = dl;
+        heartRadial[jd] = dl;
+        if (dl > 1e-5) {
+          heartDir[bd] = dxh / dl;
+          heartDir[bd + 1] = dyh / dl;
+          heartDir[bd + 2] = dzh / dl;
+        } else {
+          heartDir[bd] = 0;
+          heartDir[bd + 1] = 1;
+          heartDir[bd + 2] = 0;
+        }
+      }
+      for (var jr = 0; jr < N; jr++) heartRadial[jr] /= maxRad;
+      // 粉→玫的空间渐变：上部偏粉、下缘与中心偏玫红
+      var pink = [1.0, 0.68, 0.85], rose = [1.0, 0.22, 0.46];
+      for (var j2 = 0; j2 < N; j2++) {
+        var bb = j2 * 3;
+        var ny = (heartTarget[bb + 1] - yMin) / (yMax - yMin);
+        var rad = clamp(Math.sqrt(heartTarget[bb] * heartTarget[bb] + heartTarget[bb + 2] * heartTarget[bb + 2]) / rMax, 0, 1);
+        var tt = clamp(0.15 + 0.65 * ny - 0.3 * rad, 0, 1);
+        colorB[bb] = mix(rose[0], pink[0], tt);
+        colorB[bb + 1] = mix(rose[1], pink[1], tt);
+        colorB[bb + 2] = mix(rose[2], pink[2], tt);
+      }
+    }
+    sampleHeart();
+
+    // 立体汉字：Canvas 采样像素 + 分层厚度
+    function computeNameWidth() {
+      return clamp(4.2 * (window.innerWidth / window.innerHeight), 2.6, 4.7);
+    }
+    var nameWidth = computeNameWidth();
+
+    // 通用 Canvas 采样：把画布中 alpha>120 的像素映射成 N 个粒子的立体字形
+    function sampleCanvasTarget(W, H, drawFn, targetArr, worldWidth, yOffset) {
+      var cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      var ctx = cv.getContext('2d');
+      if (!ctx) throw new Error('Canvas 2D 不可用');
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      drawFn(ctx);
+      var img = ctx.getImageData(0, 0, W, H).data;
+      var pts = [];
+      for (var y = 0; y < H; y++) {
+        var row = y * W;
+        for (var x = 0; x < W; x++) {
+          if (img[(row + x) * 4] > 120) pts.push(x, y);
+        }
+      }
+      var total = pts.length / 2;
+      if (total < 200) return false;
+      var k = worldWidth / W;
+      var layers = [-0.22, -0.11, 0, 0.11, 0.22];
+      var weights = [0.1, 0.22, 0.36, 0.22, 0.1];
+      var golden = 0.6180339887;
+      for (var m = 0; m < N; m++) {
+        var idx = Math.floor(frac(m * golden) * total);
+        var px = pts[idx * 2], py = pts[idx * 2 + 1];
+        var r = rand(), acc = 0, li = 0;
+        for (var jj = 0; jj < 5; jj++) {
+          acc += weights[jj];
+          if (r <= acc) { li = jj; break; }
+        }
+        var q = m * 3;
+        targetArr[q] = (px - W / 2) * k;
+        targetArr[q + 1] = -(py - H / 2) * k + (yOffset || 0);
+        targetArr[q + 2] = layers[li];
+      }
+      return true;
+    }
+
+    function sampleName() {
+      var W = 1200, H = 620;
+      var ok = sampleCanvasTarget(W, H, function (ctx) {
+        var fs = 300;
+        var fontStr = '700 ' + fs + 'px "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+        ctx.font = fontStr;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        var chars = ['杨', '玲', '懿'];
+        var gap = fs * 0.3;
+        var cw = chars.map(function (c) { return ctx.measureText(c).width; });
+        var tw = cw[0] + cw[1] + cw[2] + gap * 2;
+        if (tw > W * 0.92) {
+          fs = Math.floor(fs * W * 0.92 / tw);
+          fontStr = '700 ' + fs + 'px "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+          ctx.font = fontStr;
+          gap = fs * 0.3;
+          cw = chars.map(function (c) { return ctx.measureText(c).width; });
+          tw = cw[0] + cw[1] + cw[2] + gap * 2;
+        }
+        ctx.fillStyle = '#fff';
+        var x0 = (W - tw) / 2;
+        var cursor = x0;
+        for (var ci = 0; ci < 3; ci++) {
+          ctx.fillText(chars[ci], cursor + cw[ci] / 2, H / 2 + 8);
+          cursor += cw[ci] + gap;
+        }
+      }, nameTarget, nameWidth, 0.1);
+      if (!ok) {
+        // 极端情况：设备无中文字体采样失败，退化为爱心形状，保证页面不白屏
+        console.warn('中文字体采样失败，名称阶段将显示爱心');
+        for (var j = 0; j < N; j++) {
+          nameTarget[j * 3] = heartTarget[j * 3];
+          nameTarget[j * 3 + 1] = heartTarget[j * 3 + 1] + 0.5;
+          nameTarget[j * 3 + 2] = heartTarget[j * 3 + 2];
+        }
+      }
+    }
+    sampleName();
+
+    // 生日组合：大标题“生日快乐” + 两行诗文，标题区先成形、诗文区随后
+    function sampleBirth() {
+      var W = 2400, H = 1150;
+      var birthWidth = nameWidth * 1.9; // 组合画面明显加宽，诗文字形才能放大到可读
+      var font = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+      var k = birthWidth / W;
+      // 预测量适配：标题与诗文分别计算最终字号
+      var mc = document.createElement('canvas');
+      mc.width = W; mc.height = H;
+      var mctx = mc.getContext('2d');
+      if (!mctx) throw new Error('Canvas 2D 不可用');
+      mctx.textAlign = 'center';
+      mctx.textBaseline = 'middle';
+      mctx.font = '700 300px ' + font;
+      var titleFs = 300;
+      var titleChars = ['生', '日', '快', '乐'];
+      var gap2 = titleFs * 0.22;
+      var cw2 = titleChars.map(function (c) { return mctx.measureText(c).width; });
+      var tw2 = cw2[0] + cw2[1] + cw2[2] + cw2[3] + gap2 * 3;
+      if (tw2 > W * 0.94) {
+        titleFs = Math.floor(titleFs * W * 0.94 / tw2);
+        mctx.font = '700 ' + titleFs + 'px ' + font;
+        gap2 = titleFs * 0.22;
+        cw2 = titleChars.map(function (c) { return mctx.measureText(c).width; });
+        tw2 = cw2[0] + cw2[1] + cw2[2] + cw2[3] + gap2 * 3;
+      }
+      // 第二行原文 33 字，单行会被自动缩放压到很小；拆成两行排，文字内容不变
+      var line1 = '那一天，天使的信件在银河里走慢了光年。';
+      var line2a = '所以你带着两个日子来到人间：';
+      var line2b = '一个留给俗世的纸张，一个留给星辰记得。';
+      var poemFs = 225; // 在单层基础上放大 50%
+      mctx.font = '600 ' + poemFs + 'px ' + font;
+      var pw = Math.max(mctx.measureText(line1).width, mctx.measureText(line2a).width, mctx.measureText(line2b).width);
+      if (pw > W * 0.96) {
+        poemFs = Math.floor(poemFs * W * 0.96 / pw);
+        mctx.font = '600 ' + poemFs + 'px ' + font;
+      }
+      var ok = sampleCanvasTarget(W, H, function (ctx) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.font = '700 ' + titleFs + 'px ' + font;
+        var x02 = (W - tw2) / 2;
+        var cur2 = x02;
+        for (var ci2 = 0; ci2 < 4; ci2++) {
+          ctx.fillText(titleChars[ci2], cur2 + cw2[ci2] / 2, H * 0.13);
+          cur2 += cw2[ci2] + gap2;
+        }
+        ctx.font = '600 ' + poemFs + 'px ' + font;
+        ctx.fillText(line1, W / 2, H * 0.56);
+        ctx.fillText(line2a, W / 2, H * 0.76);
+        ctx.fillText(line2b, W / 2, H * 0.92);
+      }, birthTarget, birthWidth, 0.05);
+      if (!ok) {
+        console.warn('生日文字采样失败，回退为名字字形');
+        for (var j = 0; j < N; j++) {
+          birthTarget[j * 3] = nameTarget[j * 3];
+          birthTarget[j * 3 + 1] = nameTarget[j * 3 + 1];
+          birthTarget[j * 3 + 2] = nameTarget[j * 3 + 2];
+        }
+      }
+      // 诗文粒子增密：单独渲染诗文笔画像素，把额外一部分粒子专门分配到诗文上，
+      // 让笔画粒子挨得更紧、不断断续续
+      try {
+        mctx.fillStyle = '#000';
+        mctx.fillRect(0, 0, W, H);
+        mctx.fillStyle = '#fff';
+        mctx.font = '600 ' + poemFs + 'px ' + font;
+        mctx.fillText(line1, W / 2, H * 0.56);
+        mctx.fillText(line2a, W / 2, H * 0.76);
+        mctx.fillText(line2b, W / 2, H * 0.92);
+        var pimg = mctx.getImageData(0, 0, W, H).data;
+        var poemPts = [];
+        for (var py = 0; py < H; py++) {
+          var prow = py * W;
+          for (var pxx = 0; pxx < W; pxx++) {
+            if (pimg[(prow + pxx) * 4] > 120) poemPts.push(pxx, py);
+          }
+        }
+        if (poemPts.length / 2 >= 300) {
+          var boost = Math.floor(N * 0.45);
+          var g2 = 0.6180339887;
+          for (var bk = 0; bk < boost; bk++) {
+            var pidx = Math.floor(frac((bk + 0.37) * g2) * (poemPts.length / 2));
+            var mi = Math.floor(rand() * N);
+            var qb = mi * 3;
+            birthTarget[qb] = (poemPts[pidx * 2] - W / 2) * k;
+            birthTarget[qb + 1] = -(poemPts[pidx * 2 + 1] - H / 2) * k + 0.05;
+            birthTarget[qb + 2] = 0;
+          }
+        }
+      } catch (e) {
+        console.warn('诗文粒子增密失败：', e && e.message);
+      }
+      // 尺寸与过渡错峰：标题区略大且先成形；诗文区单层平铺、更细更密、后成形
+      for (var i = 0; i < N; i++) {
+        var by = birthTarget[i * 3 + 1];
+        if (by > -0.05) {
+          sizeBirth[i] = sizeName[i] * 1.1;
+          birthDelay[i] = 0;
+        } else {
+          // 诗文粒子：单层 z=0 平铺 + 更细更亮（比之前细约 30%），笔画连成清晰字形
+          birthTarget[i * 3 + 2] = 0;
+          sizeBirth[i] = sizeName[i] * 0.40;
+          birthDelay[i] = 0.32;
+        }
+      }
+    }
+    sampleBirth();
+
+    // “我也记得”：四字单层平铺，粒子密集连成笔画（生日之后的收尾段）
+    var rememberTarget = new Float32Array(N * 3);
+    var sizeRemember = new Float32Array(N);
+    var rememberDelay = new Float32Array(N);
+    function sampleRemember() {
+      var W = 1600, H = 700;
+      var rememberWidth = nameWidth * 1.35;
+      var font = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+      var ok = sampleCanvasTarget(W, H, function (ctx) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        var fs = 230;
+        ctx.font = '700 ' + fs + 'px ' + font;
+        var chars = ['我', '也', '记', '得'];
+        var gapR = fs * 0.28;
+        var cwR = chars.map(function (c) { return ctx.measureText(c).width; });
+        var twR = cwR[0] + cwR[1] + cwR[2] + cwR[3] + gapR * 3;
+        if (twR > W * 0.94) {
+          fs = Math.floor(fs * W * 0.94 / twR);
+          ctx.font = '700 ' + fs + 'px ' + font;
+          gapR = fs * 0.28;
+          cwR = chars.map(function (c) { return ctx.measureText(c).width; });
+          twR = cwR[0] + cwR[1] + cwR[2] + cwR[3] + gapR * 3;
+        }
+        var x0R = (W - twR) / 2;
+        var curR = x0R;
+        for (var ri = 0; ri < 4; ri++) {
+          ctx.fillText(chars[ri], curR + cwR[ri] / 2, H / 2);
+          curR += cwR[ri] + gapR;
+        }
+      }, rememberTarget, rememberWidth, 0.02);
+      if (!ok) {
+        console.warn('“我也记得”采样失败，回退为生日字形');
+        for (var j = 0; j < N; j++) {
+          rememberTarget[j * 3] = birthTarget[j * 3];
+          rememberTarget[j * 3 + 1] = birthTarget[j * 3 + 1];
+          rememberTarget[j * 3 + 2] = 0;
+        }
+      }
+      // 单层平铺 + 更小更亮，四字笔画清晰；按横向位置轻微错峰
+      for (var i = 0; i < N; i++) {
+        var qb = i * 3;
+        rememberTarget[qb + 2] = 0;
+        sizeRemember[i] = sizeName[i] * 0.58;
+        var rx = clamp((rememberTarget[qb] + rememberWidth / 2) / rememberWidth, 0, 1);
+        rememberDelay[i] = 0.15 + rx * 0.3;
+      }
+    }
+    sampleRemember();
+
+    // 消散：每颗粒子的随机漂移方向与速度（“我也记得”自然飘散消隐）
+    var dissolveDir = new Float32Array(N * 3);
+    var dissolveSpd = new Float32Array(N);
+    for (var dd = 0; dd < N; dd++) {
+      var db = dd * 3;
+      var dA = rand() * Math.PI * 2;
+      var dB = (rand() * 2 - 1) * Math.PI * 0.85;
+      dissolveDir[db] = Math.cos(dA) * Math.cos(dB);
+      dissolveDir[db + 1] = Math.sin(dA) * Math.cos(dB);
+      dissolveDir[db + 2] = Math.sin(dB);
+      dissolveSpd[dd] = mix(0.5, 1.5, rand());
+    }
+
+    var vertexShader = [
+      'uniform float uPixelRatio;',
+      'uniform float uStretch;',
+      'attribute vec3 aCenter;',
+      'attribute vec2 aQuad;',
+      'attribute vec3 aColor;',
+      'attribute float aAlpha;',
+      'attribute float aSize;',
+      'attribute vec3 aVelocity;',
+      'attribute float aStretch;',
+      'attribute float aStar;',
+      'varying vec3 vColor;',
+      'varying float vAlpha;',
+      'varying vec2 vUv;',
+      'varying float vStar;',
+      'void main() {',
+      '  vec4 mv = modelViewMatrix * vec4(aCenter, 1.0);',
+      '  vec3 mvVel = (viewMatrix * vec4(aVelocity, 0.0)).xyz;',
+      '  vec2 vel2 = mvVel.xy;',
+      '  float vl = length(vel2);',
+      '  vec2 uDir = vl > 1e-4 ? vel2 / vl : vec2(1.0, 0.0);',
+      '  vec2 vDir = vec2(-uDir.y, uDir.x);',
+      '  float stretch = clamp(vl * uStretch * aStretch, 0.0, 30.0);',
+      '  float sx = 0.5 + stretch;',
+      '  float sy = 0.5;',
+      '  vec3 off = (vec3(uDir * (aQuad.x * sx), 0.0) + vec3(vDir * (aQuad.y * sy), 0.0)) * aSize;',
+      '  off -= vec3(uDir * (stretch * aSize), 0.0);',
+      '  gl_Position = projectionMatrix * vec4(mv.xyz + off, 1.0);',
+      '  vColor = aColor;',
+      '  vAlpha = aAlpha;',
+      '  vUv = aQuad * 0.5 + 0.5;',
+      '  vStar = aStar;',
+      '}'
+    ].join('\n');
+
+    var fragmentShader = [
+      'varying vec3 vColor;',
+      'varying float vAlpha;',
+      'varying vec2 vUv;',
+      'varying float vStar;',
+      'void main() {',
+      '  vec2 p = vUv * 2.0 - 1.0;',
+      '  float d = length(p);',
+      '  float glow = smoothstep(1.0, 0.12, d);',
+      '  float core = smoothstep(0.45, 0.0, d);',
+      '  float rayX = pow(1.0 - min(1.0, abs(p.x)), 4.0);',
+      '  float rayY = pow(1.0 - min(1.0, abs(p.y)), 4.0);',
+      '  float star = rayX * rayY;',
+      '  float glow2 = mix(glow, max(glow * 0.4, star), vStar);',
+      '  vec3 col = vColor * (0.55 + 0.95 * core);',
+      '  gl_FragColor = vec4(col, vAlpha * glow2);',
+      '}'
+    ].join('\n');
+
+    var geo = new THREE.InstancedBufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0]), 3));
+    geo.setAttribute('aQuad', new THREE.BufferAttribute(new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]), 2));
+    geo.setIndex(new THREE.BufferAttribute(new Uint16Array([0, 1, 2, 0, 2, 3]), 1));
+    geo.setAttribute('aCenter', new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3));
+    geo.setAttribute('aColor', new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3));
+    geo.setAttribute('aAlpha', new THREE.InstancedBufferAttribute(new Float32Array(N), 1));
+    geo.setAttribute('aSize', new THREE.InstancedBufferAttribute(new Float32Array(N), 1));
+    geo.setAttribute('aVelocity', new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3));
+    geo.setAttribute('aStretch', new THREE.InstancedBufferAttribute(new Float32Array(N), 1));
+    geo.setAttribute('aStar', new THREE.InstancedBufferAttribute(starArr, 1));
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 60);
+    // 拖尾粒子使用大拉伸倍率：拉成细长发光条；其余粒子为圆形
+    var mat = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uPixelRatio: { value: renderer.getPixelRatio() },
+        uStretch: { value: 0.16 }
+      }
+    });
+    var points = new THREE.Mesh(geo, mat);
+    points.frustumCulled = false;
+    heartGroup.add(points);
+
+    // ---------- 流星拖尾（连续细带，从头向尾渐细渐淡） ----------
+    var TAIL_SEGS = 14;
+    var RIB_VERTS = METEOR_N * (TAIL_SEGS + 1) * 2;
+    var ribPosArr = new Float32Array(RIB_VERTS * 3);
+    var ribColArr = new Float32Array(RIB_VERTS * 3);
+    var ribAlpArr = new Float32Array(RIB_VERTS);
+    var ribUArr = new Float32Array(RIB_VERTS);      // 0 头 → 1 尾
+    var ribCrossArr = new Float32Array(RIB_VERTS);  // -1/1 细带两侧
+    var ribIdx = [];
+    for (var rm = 0; rm < METEOR_N; rm++) {
+      var rbase = rm * (TAIL_SEGS + 1) * 2;
+      for (var rs = 0; rs <= TAIL_SEGS; rs++) {
+        var ra = rbase + rs * 2;
+        ribUArr[ra] = ribUArr[ra + 1] = rs / TAIL_SEGS;
+        ribCrossArr[ra] = 1;
+        ribCrossArr[ra + 1] = -1;
+      }
+      for (var rs2 = 0; rs2 < TAIL_SEGS; rs2++) {
+        var ra = rbase + rs2 * 2;
+        ribIdx.push(ra, ra + 1, ra + 2, ra + 1, ra + 3, ra + 2);
+      }
+    }
+    var ribGeo = new THREE.BufferGeometry();
+    ribGeo.setAttribute('position', new THREE.BufferAttribute(ribPosArr, 3));
+    ribGeo.setAttribute('aColor', new THREE.BufferAttribute(ribColArr, 3));
+    ribGeo.setAttribute('aAlpha', new THREE.BufferAttribute(ribAlpArr, 1));
+    ribGeo.setAttribute('aU', new THREE.BufferAttribute(ribUArr, 1));
+    ribGeo.setAttribute('aCross', new THREE.BufferAttribute(ribCrossArr, 1));
+    ribGeo.setIndex(ribIdx);
+    ribGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 200);
+    var ribMat = new THREE.ShaderMaterial({
+      vertexShader: [
+        'attribute vec3 aColor;',
+        'attribute float aAlpha;',
+        'attribute float aU;',
+        'attribute float aCross;',
+        'uniform float uFade;',
+        'varying vec3 vColor;',
+        'varying float vAlpha;',
+        'varying float vU;',
+        'varying float vCross;',
+        'void main() {',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '  vColor = aColor;',
+        '  vAlpha = aAlpha * uFade;',
+        '  vU = aU;',
+        '  vCross = aCross;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'varying vec3 vColor;',
+        'varying float vAlpha;',
+        'varying float vU;',
+        'varying float vCross;',
+        'void main() {',
+        '  float across = smoothstep(1.0, 0.05, abs(vCross));',
+        '  float headGlow = 0.55 + 0.45 * pow(1.0 - vU, 1.6);',
+        '  gl_FragColor = vec4(vColor * 1.12, vAlpha * across * headGlow);',
+        '}'
+      ].join('\n'),
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uFade: { value: 1 } }
+    });
+    var ribbons = new THREE.Mesh(ribGeo, ribMat);
+    ribbons.frustumCulled = false;
+    scene.add(ribbons);
+
+    // ---------- 姓名环绕粒子（祝福飘带） ----------
+    var sparkCount = isMobile ? 130 : 240;
+    var sparkGeo = new THREE.BufferGeometry();
+    var sparkPos = new Float32Array(sparkCount * 3);
+    var sparkData = [];
+    for (var si = 0; si < sparkCount; si++) {
+      var ring = si % 2;
+      sparkData.push({
+        radius: ring === 0 ? mix(2.8, 3.1, rand()) : mix(3.1, 3.5, rand()),
+        theta0: rand() * Math.PI * 2,
+        speed: ring === 0 ? mix(0.16, 0.24, rand()) : -mix(0.16, 0.24, rand()),
+        tilt: ring === 0 ? mix(0.25, 0.55, rand()) : -mix(0.2, 0.45, rand()),
+        phase: rand() * Math.PI * 2
+      });
+      sparkPos[si * 3 + 1] = -99;
+    }
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+    var sparkMat = new THREE.PointsMaterial({
+      size: 0.13, map: glowTex, color: 0xffe7bd, transparent: true, opacity: 0,
+      depthWrite: false, sizeAttenuation: true, blending: THREE.AdditiveBlending
+    });
+    var sparkles = new THREE.Points(sparkGeo, sparkMat);
+    sparkles.frustumCulled = false;
+    scene.add(sparkles);
+
+    function updateSparkles(dt, targetOp) {
+      sparkMat.opacity += (targetOp - sparkMat.opacity) * Math.min(1, dt * 3);
+      if (sparkMat.opacity < 0.015 && targetOp === 0) return;
+      var t = nowTime;
+      for (var i = 0; i < sparkCount; i++) {
+        var d = sparkData[i];
+        var a = d.theta0 + t * d.speed;
+        var x = Math.cos(a) * d.radius;
+        var y = Math.sin(a) * d.radius;
+        var ct = Math.cos(d.tilt), st = Math.sin(d.tilt);
+        var y2 = y * ct;
+        var z2 = y * st;
+        var q = i * 3;
+        sparkPos[q] = x;
+        sparkPos[q + 1] = y2 + 0.12 + Math.sin(t * 0.7 + d.phase) * 0.12;
+        sparkPos[q + 2] = z2;
+      }
+      sparkGeo.attributes.position.needsUpdate = true;
+    }
+
+    // ---------- 爱心四周悬浮闪烁星（爱心→名字→生日持续） ----------
+    var heartStarCount = isMobile ? 90 : 160;
+    var heartStarGroup = new THREE.Group();
+    var heartStarPos = new Float32Array(heartStarCount * 3);
+    var heartStarPhase = new Float32Array(heartStarCount);
+    var heartStarSize = new Float32Array(heartStarCount);
+    var heartStarCol = new Float32Array(heartStarCount * 3);
+    var hspals = [[1.0, 0.75, 0.85], [1.0, 0.93, 0.82], [0.85, 0.82, 1.0], [0.9, 0.95, 1.0]];
+    for (var hs = 0; hs < heartStarCount; hs++) {
+      var hsRad = mix(1.7, 3.6, rand());
+      var hsA = rand() * Math.PI * 2;
+      var hsB = (rand() * 2 - 1) * 0.9;
+      var hc = Math.cos(hsB), hsp = Math.sin(hsB);
+      heartStarPos[hs * 3] = hsRad * hc * Math.cos(hsA);
+      heartStarPos[hs * 3 + 1] = hsRad * Math.sin(hsA) * 0.8;
+      heartStarPos[hs * 3 + 2] = hsRad * hsp * 0.55;
+      heartStarPhase[hs] = rand() * Math.PI * 2;
+      heartStarSize[hs] = mix(0.06, 0.14, rand());
+      var hpal = hspals[Math.floor(rand() * hspals.length)];
+      heartStarCol[hs * 3] = hpal[0];
+      heartStarCol[hs * 3 + 1] = hpal[1];
+      heartStarCol[hs * 3 + 2] = hpal[2];
+    }
+    var heartStarGeo = new THREE.BufferGeometry();
+    heartStarGeo.setAttribute('position', new THREE.BufferAttribute(heartStarPos, 3));
+    heartStarGeo.setAttribute('aPhase', new THREE.BufferAttribute(heartStarPhase, 1));
+    heartStarGeo.setAttribute('aSize', new THREE.BufferAttribute(heartStarSize, 1));
+    heartStarGeo.setAttribute('aColor', new THREE.BufferAttribute(heartStarCol, 3));
+    var heartStarMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uOpacity: { value: 0 } },
+      vertexShader: [
+        'attribute float aPhase;',
+        'attribute float aSize;',
+        'attribute vec3 aColor;',
+        'uniform float uTime;',
+        'varying vec3 vColor;',
+        'varying float vTw;',
+        'void main() {',
+        '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+        '  gl_PointSize = aSize * (300.0 / max(2.0, -mv.z));',
+        '  gl_Position = projectionMatrix * mv;',
+        '  vColor = aColor;',
+        '  float tw = 0.5 + 0.5 * sin(uTime * (0.9 + 0.8 * aPhase) + aPhase * 6.28318);',
+        '  vTw = tw * tw;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'varying vec3 vColor;',
+        'varying float vTw;',
+        'uniform float uOpacity;',
+        'void main() {',
+        '  float d = length(gl_PointCoord - 0.5) * 2.0;',
+        '  float glow = smoothstep(1.0, 0.15, d);',
+        '  gl_FragColor = vec4(vColor, glow * vTw * uOpacity);',
+        '}'
+      ].join('\n'),
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+    var heartStars = new THREE.Points(heartStarGeo, heartStarMat);
+    heartStars.frustumCulled = false;
+    heartStarGroup.add(heartStars);
+    scene.add(heartStarGroup);
+
+    // ---------- 时间轴状态机 ----------
+    var T_INTRO = isMobile ? 18.5 : 15;
+    var T_METEOR = 10, T_TO_HEART = 3, T_HEART = 4, T_TO_NAME = 3, T_NAME = 5, T_TO_BIRTH = 3, T_BIRTH = 6, T_TO_REMEMBER = 3, T_REMEMBER = 4, T_DISSOLVE = 3, T_RESET = 2;
+    var C_HEART = T_METEOR + T_TO_HEART;
+    var C_NAME = C_HEART + T_HEART + T_TO_NAME;
+    var C_BIRTH = C_NAME + T_NAME + T_TO_BIRTH;
+    var C_REMEMBER = C_BIRTH + T_BIRTH + T_TO_REMEMBER;
+    var C_DISSOLVE = C_REMEMBER + T_REMEMBER;
+    var TOTAL = C_DISSOLVE + T_DISSOLVE + T_RESET;
+    var HEART_ROT_END = T_HEART * 0.42;
+    var phase = 'intro';
+    var nowTime = 0;
+    var ribbonCleared = true;
+
+    // ---------- 开头字幕（仅首次播放） ----------
+    var introDone = false;
+    var INTRO_LINES = isMobile ? [
+      { text: '建议横屏观看', t0: 0.8, tin: 1.2, t1: 3.0, tout: 0.9 },
+      { text: '听说今晚上有流星雨', t0: 4.2, tin: 1.2, t1: 6.4, tout: 0.9 },
+      { text: '不知道你那边看没看得到', t0: 7.6, tin: 1.2, t1: 9.8, tout: 0.9 },
+      { text: '不过没关系', t0: 11.0, tin: 1.2, t1: 13.2, tout: 0.9 },
+      { text: '我带你看', t0: 14.4, tin: 1.6, t1: 17.2, tout: 1.0, reveal: true }
+    ] : [
+      { text: '听说今晚上有流星雨', t0: 0.8, tin: 1.2, t1: 3.0, tout: 0.9 },
+      { text: '不知道你那边看没看得到', t0: 4.2, tin: 1.2, t1: 6.4, tout: 0.9 },
+      { text: '不过没关系', t0: 7.6, tin: 1.2, t1: 9.8, tout: 0.9 },
+      { text: '我带你看', t0: 11.0, tin: 1.6, t1: 13.8, tout: 1.0, reveal: true }
+    ];
+    var introRevealT0 = INTRO_LINES[INTRO_LINES.length - 1].t0 + 0.6;
+    function updateIntro(tm) {
+      if (introDone) return;
+      var active = -1;
+      for (var i = 0; i < INTRO_LINES.length; i++) {
+        if (tm >= INTRO_LINES[i].t0) active = i;
+      }
+      if (active >= 0) {
+        var L = INTRO_LINES[active];
+        var a = 0;
+        if (tm < L.t0 + L.tin) a = (tm - L.t0) / L.tin;
+        else if (tm < L.t1) a = 1;
+        else a = Math.max(0, 1 - (tm - L.t1) / L.tout);
+        introText.textContent = L.text;
+        introText.style.opacity = a;
+        if (L.reveal) {
+          introMask.style.opacity = 1 - clamp((tm - introRevealT0) / 2.2, 0, 1);
+        }
+      } else {
+        introText.style.opacity = 0;
+      }
+      if (tm >= T_INTRO) {
+        introDone = true;
+        introMask.style.display = 'none';
+        introText.style.opacity = 0;
+      }
+    }
+
+    // ---------- 名字/生日展示期边缘微光小字（槽位铺满四边） ----------
+    var EDGE_WORDS = ['Star', 'Love', 'Forever'];
+    var edgeCycle = 5.2;    // 每个槽位的完整循环周期
+    var edgeShowDur = 2.4;  // 每个槽位单次显示时长
+    var edgeSlots = [];
+    function buildEdgeSlots() {
+      var count = isMobile ? 12 : 18;
+      var vw = window.innerWidth, vh = window.innerHeight;
+      edgeSlots = [];
+      var perSide = Math.ceil(count / 4);
+      for (var i = 0; i < count; i++) {
+        var s = {};
+        s.el = null;
+        s.hiding = false;
+        s.phase = i * (edgeCycle / count) + rand() * 0.4; // 固定错峰，避免同时炸开
+        s.fontSize = 11 + rand() * 6;
+        s.word = EDGE_WORDS[Math.floor(rand() * EDGE_WORDS.length)];
+        var side = i % 4;
+        var pos = (Math.floor(i / 4) + 0.5) / perSide;
+        if (side === 0) {
+          s.top = (0.045 + 0.02 * rand()) * vh + 'px';
+          s.left = (0.06 + 0.88 * pos) * vw + 'px';
+        } else if (side === 1) {
+          s.bottom = (0.045 + 0.02 * rand()) * vh + 'px';
+          s.left = (0.06 + 0.88 * pos) * vw + 'px';
+        } else if (side === 2) {
+          s.left = (0.028 + 0.015 * rand()) * vw + 'px';
+          s.top = (0.10 + 0.72 * pos) * vh + 'px';
+        } else {
+          s.right = (0.028 + 0.015 * rand()) * vw + 'px';
+          s.top = (0.10 + 0.72 * pos) * vh + 'px';
+        }
+        edgeSlots.push(s);
+      }
+    }
+    buildEdgeSlots();
+
+    function showEdgeSlot(s) {
+      if (s.el) return;
+      var el = document.createElement('div');
+      el.className = 'edge-word';
+      el.textContent = s.word;
+      el.style.fontSize = s.fontSize + 'px';
+      if (s.top) el.style.top = s.top;
+      if (s.bottom) el.style.bottom = s.bottom;
+      if (s.left) el.style.left = s.left;
+      if (s.right) el.style.right = s.right;
+      edgeWords.appendChild(el);
+      s.el = el;
+      s.hiding = false;
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { el.style.opacity = '0.5'; });
+      });
+    }
+    function hideEdgeSlot(s) {
+      if (!s.el || s.hiding) return;
+      s.hiding = true;
+      var el = s.el;
+      el.style.opacity = '0';
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        if (s.el === el) s.el = null;
+        s.hiding = false;
+      }, 1100);
+    }
+    function updateEdgeSlots(active) {
+      if (!active) {
+        for (var i = 0; i < edgeSlots.length; i++) hideEdgeSlot(edgeSlots[i]);
+        return;
+      }
+      for (var i = 0; i < edgeSlots.length; i++) {
+        var s = edgeSlots[i];
+        if (((nowTime + s.phase) % edgeCycle) < edgeShowDur) showEdgeSlot(s);
+        else hideEdgeSlot(s);
+      }
+    }
+
+    // 常态心跳：拟真的“咚-哒”双搏动
+    function heartPulse(tt) {
+      var p = (tt % 1.6) / 1.6;
+      var g = function (c, w) { return Math.exp(-Math.pow((p - c) / w, 2)); };
+      return 0.85 * g(0.15, 0.115) + 0.45 * g(0.36, 0.1);
+    }
+
+    function updateMeteor(tm) {
+      // 流星头部 + 沿轨迹的发光拖尾
+      for (var m = 0; m < METEOR_N; m++) {
+        var hb = m * 3;
+        var life = meteorLife[m];
+        var gap = 0.8 + life * 1.1;
+        var cyc = (tm + meteorDelay[m]) % (life + gap);
+        if (cyc < life) {
+          var k = cyc / life;
+          var fi = smoothstep01(k * 6);
+          var fo = 1 - smoothstep01((k - 0.88) / 0.12);
+          var hx = meteorSpawn[hb] + meteorVel[hb] * cyc;
+          var hy = meteorSpawn[hb + 1] + meteorVel[hb + 1] * cyc;
+          var hz = meteorSpawn[hb + 2] + meteorVel[hb + 2] * cyc;
+          pos[hb] = hx; pos[hb + 1] = hy; pos[hb + 2] = hz;
+          vel[hb] = vel[hb + 1] = vel[hb + 2] = 0; // 头部是圆形光点，不拉伸
+          var flashAt = life * (0.3 + 0.55 * frac(seed[m] * 7.31));
+          var fd = Math.abs(cyc - flashAt);
+          var flash = fd < 0.1 ? (1 - fd / 0.1) : 0;
+          var br = 0.75 + 0.4 * frac(seed[m] * 3.7);
+          var a = br * fi * fo;
+          starArr[m] = flash;
+          alphas[m] = a * (1 + flash * 1.3);
+          sizes[m] = sizeBase[m] * (1 + flash * 1.8);
+          var cr = mix(colorA[hb], 1, flash * 0.9);
+          var cg = mix(colorA[hb + 1], 1, flash * 0.9);
+          var cb = mix(colorA[hb + 2], 1, flash * 0.9);
+          colors[hb] = cr; colors[hb + 1] = cg; colors[hb + 2] = cb;
+          // 拖尾：连续细带，从头向尾渐细渐淡
+          var trailT = meteorTrailT[m];
+          var pl = Math.sqrt(meteorVel[hb] * meteorVel[hb] + meteorVel[hb + 1] * meteorVel[hb + 1] + meteorVel[hb + 2] * meteorVel[hb + 2]);
+          var pdx = meteorVel[hb] / pl, pdy = meteorVel[hb + 1] / pl, pdz = meteorVel[hb + 2] / pl;
+          for (var j = 0; j <= TAIL_SEGS; j++) {
+            var u = j / TAIL_SEGS;
+            var tl = 1 - u;
+            var tx = hx - meteorVel[hb] * trailT * u;
+            var ty = hy - meteorVel[hb + 1] * trailT * u;
+            var tz = hz - meteorVel[hb + 2] * trailT * u;
+            var vx = tx - camera.position.x, vy = ty - camera.position.y, vz = tz - camera.position.z;
+            var wdx = pdy * vz - pdz * vy, wdy = pdz * vx - pdx * vz, wdz = pdx * vy - pdy * vx;
+            var wl = Math.sqrt(wdx * wdx + wdy * wdy + wdz * wdz);
+            if (wl < 1e-5) { wdx = 1; wdy = 0; wdz = 0; }
+            else { wdx /= wl; wdy /= wl; wdz /= wl; }
+            var w = sizeBase[m] * 0.6 * Math.pow(tl, 0.85);
+            var va = m * (TAIL_SEGS + 1) * 2 + j * 2;
+            var vb = va * 3;
+            ribPosArr[vb] = tx + wdx * w;
+            ribPosArr[vb + 1] = ty + wdy * w;
+            ribPosArr[vb + 2] = tz + wdz * w;
+            ribPosArr[vb + 3] = tx - wdx * w;
+            ribPosArr[vb + 4] = ty - wdy * w;
+            ribPosArr[vb + 5] = tz - wdz * w;
+            var al = a * Math.pow(tl, 0.9) * smoothstep01(clamp((tl - 0.03) / 0.12, 0, 1)) * (1 + flash * 0.5);
+            ribAlpArr[va] = al;
+            ribAlpArr[va + 1] = al;
+            var dc = 1 - 0.35 * u;
+            ribColArr[vb] = cr * dc; ribColArr[vb + 1] = cg * dc; ribColArr[vb + 2] = cb * dc;
+            ribColArr[vb + 3] = cr * dc; ribColArr[vb + 4] = cg * dc; ribColArr[vb + 5] = cb * dc;
+          }
+        } else {
+          pos[hb] = meteorSpawn[hb];
+          pos[hb + 1] = meteorSpawn[hb + 1] + 1;
+          pos[hb + 2] = meteorSpawn[hb + 2];
+          vel[hb] = vel[hb + 1] = vel[hb + 2] = 0;
+          starArr[m] = 0;
+          sizes[m] = sizeBase[m] * 0.3;
+          alphas[m] = 0;
+          colors[hb] = colorA[hb];
+          colors[hb + 1] = colorA[hb + 1];
+          colors[hb + 2] = colorA[hb + 2];
+          for (var jz = 0; jz <= TAIL_SEGS; jz++) {
+            var vz2 = m * (TAIL_SEGS + 1) * 2 + jz * 2;
+            ribAlpArr[vz2] = 0;
+            ribAlpArr[vz2 + 1] = 0;
+          }
+        }
+      }
+      ribGeo.attributes.position.needsUpdate = true;
+      ribGeo.attributes.aColor.needsUpdate = true;
+      ribGeo.attributes.aAlpha.needsUpdate = true;
+      // 暂存粒子（隐藏）
+      for (var p = METEOR_N; p < N; p++) {
+        var pb = p * 3;
+        pos[pb] = meteorSpawn[pb];
+        pos[pb + 1] = meteorSpawn[pb + 1];
+        pos[pb + 2] = meteorSpawn[pb + 2];
+        vel[pb] = vel[pb + 1] = vel[pb + 2] = 0;
+        sizes[p] = sizeBase[p] * 0.3;
+        alphas[p] = 0;
+        starArr[p] = 0;
+        colors[pb] = colorA[pb];
+        colors[pb + 1] = colorA[pb + 1];
+        colors[pb + 2] = colorA[pb + 2];
+      }
+      geo.attributes.aStar.needsUpdate = true;
+    }
+
+    // 非流星阶段一次性清空拖尾细带，避免残影冻结在画面里
+    function clearRibbons() {
+      if (ribbonCleared) return;
+      ribAlpArr.fill(0);
+      ribGeo.attributes.aAlpha.needsUpdate = true;
+      ribbonCleared = true;
+    }
+
+    function update(dt) {
+      var lt = Math.max(0, nowTime - T_INTRO);
+      var cyc = lt % TOTAL;
+      var i, b, q, pp, pe;
+
+      heartGroup.rotation.y = 0;
+      heartGroup.scale.setScalar(1);
+      points.position.y = 0;
+
+      if (nowTime < T_INTRO) {
+        phase = 'intro';
+        ribbonCleared = false;
+        updateMeteor(nowTime);
+      } else if (cyc < T_METEOR) {
+        phase = 'meteor';
+        ribbonCleared = false;
+        updateMeteor(nowTime);
+      } else if (cyc < C_HEART) {
+        clearRibbons();
+        phase = 'toHeart';
+        pe = easeInOut((cyc - T_METEOR) / T_TO_HEART);
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          pp = clamp((pe - seed[i] * 0.38) / 0.62, 0, 1);
+          q = pp * pp * (3 - 2 * pp);
+          pos[b] = mix(pos[b], heartTarget[b], q);
+          pos[b + 1] = mix(pos[b + 1], heartTarget[b + 1], q);
+          pos[b + 2] = mix(pos[b + 2], heartTarget[b + 2], q);
+          colors[b] = mix(colorA[b], colorB[b], q);
+          colors[b + 1] = mix(colorA[b + 1], colorB[b + 1], q);
+          colors[b + 2] = mix(colorA[b + 2], colorB[b + 2], q);
+          sizes[i] = mix(sizeBase[i], sizeSmall[i], q);
+          alphas[i] = 0.85 * q;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_HEART + T_HEART) {
+        clearRibbons();
+        phase = 'heartHold';
+        heartGroup.rotation.y = (cyc - T_METEOR - T_TO_HEART) * 0.42;
+        var beat = heartPulse(nowTime);
+        heartGroup.scale.setScalar(1 + 0.025 * beat);
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          // 内部震动：每颗粒子沿心形径向随心跳脉动，越靠边缘幅度越大
+          var pamp = beat * (0.045 + 0.11 * heartRadial[i]);
+          pos[b] = heartTarget[b] + heartDir[b] * pamp;
+          pos[b + 1] = heartTarget[b + 1] + heartDir[b + 1] * pamp;
+          pos[b + 2] = heartTarget[b + 2] + heartDir[b + 2] * pamp;
+          var sh = 1 + 0.045 * Math.sin(nowTime * 2.3 + seed[i] * 6.28);
+          colors[b] = colorB[b] * sh;
+          colors[b + 1] = colorB[b + 1] * sh;
+          colors[b + 2] = colorB[b + 2] * sh;
+          sizes[i] = sizeSmall[i] * (1 + 0.08 * beat * heartRadial[i]);
+          alphas[i] = 0.8;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_NAME) {
+        clearRibbons();
+        phase = 'toName';
+        pe = easeInOut((cyc - T_METEOR - T_TO_HEART - T_HEART) / T_TO_NAME);
+        heartGroup.rotation.y = HEART_ROT_END * (1 - pe);
+        // 三层过渡：A 收拢成光核 → B 光核散开成字 → C 收尾定型
+        var pA = clamp(pe / 0.35, 0, 1);
+        var pB = clamp((pe - 0.35) / 0.4, 0, 1);
+        var pC = clamp((pe - 0.75) / 0.25, 0, 1);
+        var eA = pA * pA * (3 - 2 * pA);
+        var eB = pB * pB * (3 - 2 * pB);
+        var eC = pC * pC * (3 - 2 * pC);
+        var beat2 = heartPulse(nowTime) * (1 - eA);
+        heartGroup.scale.setScalar(1 + 0.025 * beat2);
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          // A：向心形中心收拢成柔和光核（心跳随之减弱）
+          var gR = (0.5 + 0.5 * heartRadial[i]) * 0.45;
+          var bx2 = mix(pos[b], heartCX + heartDir[b] * gR, eA);
+          var by2 = mix(pos[b + 1], heartCY + heartDir[b + 1] * gR, eA);
+          var bz2 = mix(pos[b + 2], heartCZ + heartDir[b + 2] * gR, eA);
+          bx2 += heartDir[b] * beat2 * (0.045 + 0.11 * heartRadial[i]);
+          by2 += heartDir[b + 1] * beat2 * (0.045 + 0.11 * heartRadial[i]);
+          bz2 += heartDir[b + 2] * beat2 * (0.045 + 0.11 * heartRadial[i]);
+          // B：从光核散开成名字（轻微错峰，整体保持连贯）
+          pp = clamp((eB - seed[i] * 0.12) / 0.88, 0, 1);
+          q = pp * pp * (3 - 2 * pp);
+          pos[b] = mix(bx2, nameTarget[b], q);
+          pos[b + 1] = mix(by2, nameTarget[b + 1], q);
+          pos[b + 2] = mix(bz2, nameTarget[b + 2], q);
+          // C：收尾定型
+          if (eC > 0) {
+            pos[b] = mix(pos[b], nameTarget[b], eC);
+            pos[b + 1] = mix(pos[b + 1], nameTarget[b + 1], eC);
+            pos[b + 2] = mix(pos[b + 2], nameTarget[b + 2], eC);
+          }
+          // 颜色：A 阶段保持粉红，B 阶段逐渐转金
+          colors[b] = mix(colorB[b], colorC[b], q * 0.92);
+          colors[b + 1] = mix(colorB[b + 1], colorC[b + 1], q * 0.92);
+          colors[b + 2] = mix(colorB[b + 2], colorC[b + 2], q * 0.92);
+          // 尺寸与透明度全程平滑，不骤降
+          sizes[i] = mix(sizeSmall[i], sizeName[i], q);
+          alphas[i] = 0.8 - 0.1 * q;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_NAME + T_NAME) {
+        clearRibbons();
+        phase = 'nameHold';
+        points.position.y = Math.sin(nowTime * 0.55) * 0.06;
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          pos[b] = nameTarget[b];
+          pos[b + 1] = nameTarget[b + 1];
+          pos[b + 2] = nameTarget[b + 2];
+          colors[b] = colorC[b];
+          colors[b + 1] = colorC[b + 1];
+          colors[b + 2] = colorC[b + 2];
+          sizes[i] = sizeName[i];
+          alphas[i] = 0.7;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_BIRTH) {
+        clearRibbons();
+        phase = 'toBirth';
+        pe = easeInOut((cyc - T_METEOR - T_TO_HEART - T_HEART - T_TO_NAME - T_NAME) / T_TO_BIRTH);
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          // 标题区先成形、诗文区随后成形，整体平滑流动
+          pp = clamp((pe - (birthDelay[i] + seed[i] * 0.12)) / 0.56, 0, 1);
+          q = pp * pp * (3 - 2 * pp);
+          pos[b] = mix(nameTarget[b], birthTarget[b], q);
+          pos[b + 1] = mix(nameTarget[b + 1], birthTarget[b + 1], q);
+          pos[b + 2] = mix(nameTarget[b + 2], birthTarget[b + 2], q);
+          var sh3 = 1 + 0.04 * Math.sin(nowTime * 2.1 + seed[i] * 6.28);
+          colors[b] = colorC[b] * sh3;
+          colors[b + 1] = colorC[b + 1] * sh3;
+          colors[b + 2] = colorC[b + 2] * sh3;
+          sizes[i] = mix(sizeName[i], sizeBirth[i], q);
+          alphas[i] = (birthDelay[i] > 0 ? 0.72 : 0.55) + 0.15 * q;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_BIRTH + T_BIRTH) {
+        clearRibbons();
+        phase = 'birth';
+        points.position.y = Math.sin(nowTime * 0.4) * 0.05;
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          pos[b] = birthTarget[b];
+          pos[b + 1] = birthTarget[b + 1];
+          pos[b + 2] = birthTarget[b + 2];
+          var isPoem = birthDelay[i] > 0;
+          var sh2 = (isPoem ? 0.95 : 0.85) + 0.12 * Math.sin(nowTime * 1.2 + seed[i] * 6.28);
+          // 诗文粒子更亮、颜色更偏白，保证小字清晰
+          colors[b] = mix(colorC[b], 1.0, isPoem ? 0.35 : 0) * sh2;
+          colors[b + 1] = mix(colorC[b + 1], 1.0, isPoem ? 0.35 : 0) * sh2;
+          colors[b + 2] = mix(colorC[b + 2], 1.0, isPoem ? 0.35 : 0) * sh2;
+          sizes[i] = sizeBirth[i];
+          alphas[i] = isPoem ? 0.95 : 0.72;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_REMEMBER) {
+        clearRibbons();
+        phase = 'toRemember';
+        pe = easeInOut((cyc - C_BIRTH - T_BIRTH) / T_TO_REMEMBER);
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          // 从左到右错峰流动：生日组合 → “我也记得”
+          pp = clamp((pe - (rememberDelay[i] + seed[i] * 0.1)) / 0.62, 0, 1);
+          q = pp * pp * (3 - 2 * pp);
+          pos[b] = mix(birthTarget[b], rememberTarget[b], q);
+          pos[b + 1] = mix(birthTarget[b + 1], rememberTarget[b + 1], q);
+          pos[b + 2] = mix(birthTarget[b + 2], rememberTarget[b + 2], q);
+          var shR = 1 + 0.05 * Math.sin(nowTime * 2.2 + seed[i] * 6.28);
+          colors[b] = mix(colorC[b], 1.0, q * 0.25) * shR;
+          colors[b + 1] = mix(colorC[b + 1], 1.0, q * 0.25) * shR;
+          colors[b + 2] = mix(colorC[b + 2], 1.0, q * 0.25) * shR;
+          sizes[i] = mix(sizeBirth[i], sizeRemember[i], q);
+          alphas[i] = mix(0.7, 0.95, q);
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_DISSOLVE) {
+        clearRibbons();
+        phase = 'rememberHold';
+        points.position.y = Math.sin(nowTime * 0.45) * 0.05;
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          pos[b] = rememberTarget[b];
+          pos[b + 1] = rememberTarget[b + 1];
+          pos[b + 2] = rememberTarget[b + 2];
+          var shH = 0.9 + 0.12 * Math.sin(nowTime * 1.4 + seed[i] * 6.28);
+          colors[b] = mix(colorC[b], 1.0, 0.3) * shH;
+          colors[b + 1] = mix(colorC[b + 1], 1.0, 0.3) * shH;
+          colors[b + 2] = mix(colorC[b + 2], 1.0, 0.3) * shH;
+          sizes[i] = sizeRemember[i];
+          alphas[i] = 0.95;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else if (cyc < C_DISSOLVE + T_DISSOLVE) {
+        clearRibbons();
+        phase = 'dissolve';
+        pe = easeInOut((cyc - C_DISSOLVE) / T_DISSOLVE);
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          // 各粒子沿随机方向缓慢漂散、亮度与尺寸同步衰减，自然消隐
+          pp = clamp((pe - seed[i] * 0.12) / 0.88, 0, 1);
+          q = pp * pp * (3 - 2 * pp);
+          var dist = q * (1.2 + 2.8 * dissolveSpd[i]);
+          pos[b] = rememberTarget[b] + dissolveDir[b] * dist;
+          pos[b + 1] = rememberTarget[b + 1] + dissolveDir[b + 1] * dist;
+          pos[b + 2] = rememberTarget[b + 2] + dissolveDir[b + 2] * dist;
+          var shD = 1 + 0.06 * Math.sin(nowTime * 1.8 + seed[i] * 6.28);
+          colors[b] = mix(colorC[b], 1.0, 0.3) * shD;
+          colors[b + 1] = mix(colorC[b + 1], 1.0, 0.3) * shD;
+          colors[b + 2] = mix(colorC[b + 2], 1.0, 0.3) * shD;
+          sizes[i] = sizeRemember[i] * (1 - 0.3 * pp);
+          alphas[i] = 0.95 * (1 - pp) * (1 - pp);
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      } else {
+        clearRibbons();
+        phase = 'reset';
+        pe = easeInOut((cyc - C_DISSOLVE - T_DISSOLVE) / T_RESET);
+        for (i = 0; i < N; i++) {
+          b = i * 3;
+          pp = clamp((pe - seed[i] * 0.3) / 0.7, 0, 1);
+          q = pp * pp * (3 - 2 * pp);
+          // 从消散后的散开位置平滑回到画面上方的暂存区（粒子已不可见，无跳变）
+          pos[b] = mix(pos[b], meteorSpawn[b], q);
+          pos[b + 1] = mix(pos[b + 1], meteorSpawn[b + 1], q);
+          pos[b + 2] = mix(pos[b + 2], meteorSpawn[b + 2], q);
+          colors[b] = mix(colorC[b], colorA[b], q);
+          colors[b + 1] = mix(colorC[b + 1], colorA[b + 1], q);
+          colors[b + 2] = mix(colorC[b + 2], colorA[b + 2], q);
+          sizes[i] = mix(sizeRemember[i], sizeBase[i] * 0.5, q);
+          alphas[i] = 0;
+          vel[b] = vel[b + 1] = vel[b + 2] = 0;
+        }
+      }
+
+      updateIntro(nowTime);
+
+      // 名字/生日展示期：边缘微光小字槽位铺满四边；离开时清空
+      updateEdgeSlots(phase === 'nameHold' || phase === 'birth' || phase === 'toRemember' || phase === 'rememberHold');
+
+      // 爱心四周悬浮星：爱心→名字→生日持续，其余阶段淡出
+      heartStarGroup.rotation.y = nowTime * 0.08;
+      heartStarMat.uniforms.uTime.value = nowTime;
+      var hsTarget = (phase === 'heartHold' || phase === 'toName' || phase === 'nameHold' || phase === 'toBirth' || phase === 'birth' || phase === 'toRemember' || phase === 'rememberHold') ? 0.85 : 0;
+      var hsOp = heartStarMat.uniforms.uOpacity.value;
+      hsOp += (hsTarget - hsOp) * Math.min(1, dt * 2.5);
+      heartStarMat.uniforms.uOpacity.value = hsOp;
+
+      // 流星阶段锁定视角，爱心成型后再放开
+      controlsLocked = phase === 'intro' || phase === 'meteor' || phase === 'toHeart';
+
+      // 非流星阶段清除四角星芒，避免闪灭残影冻结
+      if (phase !== 'meteor' && phase !== 'intro') {
+        for (var st = 0; st < N; st++) {
+          if (starArr[st] !== 0) {
+            starArr[st] = 0;
+            geo.attributes.aStar.needsUpdate = true;
+          }
+        }
+      }
+
+      // 地面仅在流星阶段显示，爱心出现前淡出
+      var groundTarget = (phase === 'intro' || phase === 'meteor') ? 1 : 0;
+      var gu = groundScreen.material.uniforms.uAlpha.value;
+      gu += (groundTarget - gu) * Math.min(1, dt * 2.5);
+      groundScreen.material.uniforms.uAlpha.value = gu;
+      groundScreen.visible = gu > 0.004;
+
+      geo.attributes.aCenter.array.set(pos);
+      geo.attributes.aColor.array.set(colors);
+      geo.attributes.aAlpha.array.set(alphas);
+      geo.attributes.aSize.array.set(sizes);
+      geo.attributes.aVelocity.array.set(vel);
+      geo.attributes.aCenter.needsUpdate = true;
+      geo.attributes.aColor.needsUpdate = true;
+      geo.attributes.aAlpha.needsUpdate = true;
+      geo.attributes.aSize.needsUpdate = true;
+      geo.attributes.aVelocity.needsUpdate = true;
+
+      var sparkTarget = 0;
+      if (phase === 'toName') sparkTarget = 0.8 * pe;
+      else if (phase === 'nameHold') sparkTarget = 0.8;
+      else if (phase === 'toBirth') sparkTarget = 0.6 * pe;
+      else if (phase === 'birth') sparkTarget = 0.6;
+      else if (phase === 'toRemember') sparkTarget = 0.5 * pe;
+      else if (phase === 'rememberHold') sparkTarget = 0.5;
+      updateSparkles(dt, sparkTarget);
+    }
+
+    // ---------- 自适应与容错 ----------
+    function onResize() {
+      var w = window.innerWidth, h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
+      renderer.setSize(w, h);
+      var nw = computeNameWidth();
+      if (Math.abs(nw - nameWidth) / nameWidth > 0.12) {
+        nameWidth = nw;
+        sampleName();
+        sampleRemember();
+      }
+      updateRotatePrompt();
+      // 旋转/缩放后重建边缘微光字槽位，避免旧尺寸错位残留
+      if (isMobile && edgeSlots.length) {
+        for (var ei = 0; ei < edgeSlots.length; ei++) hideEdgeSlot(edgeSlots[ei]);
+        buildEdgeSlots();
+      }
+    }
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', function () { setTimeout(onResize, 150); });
+
+    // ---------- 主循环 ----------
+    var lastT = performance.now();
+    var startTime = performance.now();
+    var firstFrame = true;
+    function animate(now) {
+      requestAnimationFrame(animate);
+      var dt = Math.min((now - lastT) / 1000, 0.1);
+      lastT = now;
+      updateRotatePrompt();
+      // 手机竖屏提示期间冻结时间轴，旋转为横屏后继续，不跳过章节进度
+      if (!rotateShown) {
+        nowTime = (performance.now() - startTime) / 1000;
+      }
+      for (var twi = 0; twi < twinkleLayers.length; twi++) {
+        twinkleLayers[twi].material.uniforms.uTime.value = nowTime;
+      }
+      update(dt);
+      updateCamera(dt);
+      renderer.render(scene, camera);
+      if (firstFrame) {
+        firstFrame = false;
+        var loader = document.getElementById('loader');
+        if (loader) loader.classList.add('hidden');
+      }
+    }
+    requestAnimationFrame(animate);
+
+  }
+})();
+</script>
+</body>
+</html>
